@@ -1,10 +1,81 @@
-import React, { Suspense, useRef, useEffect, useState } from 'react';
+import React, { Suspense, useRef, useEffect, useState, useMemo } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useGLTF, useAnimations, useTexture, OrbitControls } from '@react-three/drei';
+import { useGLTF, useAnimations, shaderMaterial } from '@react-three/drei';
+import { extend } from '@react-three/fiber';
 import * as THREE from 'three';
 import './App.css';
 import { useKeyboardControls } from './useKeyboardControls';
 import { PortalVortex } from './PortalVortex';
+
+// 그라데이션 바닥을 위한 셰이더 머티리얼 (그림자 지원)
+const GradientFloorMaterial = shaderMaterial(
+  // Uniforms
+  {
+    uColorStart: new THREE.Color('#90EE90'), // 연두색 시작
+    uColorEnd: new THREE.Color('#E0FFE0'),   // 훨씬 더 밝은 연두색 끝
+  },
+  // Vertex Shader
+  `
+  #include <common>
+  #include <shadowmap_pars_vertex>
+  
+  varying vec4 vScreenPosition;
+  varying vec3 vWorldPosition;
+  
+  void main() {
+    vec4 worldPosition = modelMatrix * vec4(position, 1.0);
+    vWorldPosition = worldPosition.xyz;
+    vec4 mvPosition = viewMatrix * worldPosition;
+    gl_Position = projectionMatrix * mvPosition;
+    
+    // 스크린 좌표를 varying으로 전달
+    vScreenPosition = gl_Position;
+    
+    #include <shadowmap_vertex>
+  }
+  `,
+  // Fragment Shader
+  `
+  #include <common>
+  #include <packing>
+  #include <lights_pars_begin>
+  #include <shadowmap_pars_fragment>
+  
+  uniform vec3 uColorStart;
+  uniform vec3 uColorEnd;
+  varying vec4 vScreenPosition;
+  varying vec3 vWorldPosition;
+
+  void main() {
+    // 스크린 좌표를 0-1 범위로 정규화
+    vec2 screenUV = (vScreenPosition.xy / vScreenPosition.w) * 0.5 + 0.5;
+    
+    // 화면 기준 오른쪽 아래로 갈수록 밝아지는 그라데이션
+    float gradient = (screenUV.x + (1.0 - screenUV.y)) * 0.5;
+    vec3 baseColor = mix(uColorStart, uColorEnd, gradient);
+    
+    // 그림자 계산
+    float shadow = getShadow(directionalShadowMap[0], directionalLightShadow.shadowMapSize, directionalLightShadow.shadowBias, directionalLightShadow.shadowRadius, vDirectionalShadowCoord[0]);
+    
+    // 그림자를 기본 색상에 적용
+    vec3 finalColor = baseColor * (0.3 + 0.7 * shadow);
+    
+    gl_FragColor = vec4(finalColor, 1.0);
+  }
+  `
+);
+
+extend({ GradientFloorMaterial });
+
+// 하늘을 위한 컴포넌트
+function Sky() {
+  return (
+    <mesh>
+      <sphereGeometry args={[400, 32, 32]} />
+      <meshBasicMaterial color="#87CEFA" side={THREE.BackSide} />
+    </mesh>
+  );
+}
 
 function CameraLogger() {
   const { log } = useKeyboardControls();
@@ -169,22 +240,55 @@ useGLTF.preload('/resources/Ultimate Animated Character Pack - Nov 2019/glTF/Bas
 
 function PortalBase(props) {
   const { scene } = useGLTF('/portalbase.glb');
+  
+  // 포털베이스의 모든 메시에 그림자 속성 추가
+  useEffect(() => {
+    scene.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+  }, [scene]);
+  
   return <primitive object={scene} {...props} />;
 }
 
 useGLTF.preload('/portalbase.glb');
 
 function Level1() {
-  const floorTexture = useTexture('/resources/level1map.png');
-  
+  // 그라데이션 텍스처 생성
+  const gradientTexture = useMemo(() => {
+    const canvas = document.createElement('canvas');
+    canvas.width = 512;
+    canvas.height = 512;
+    const context = canvas.getContext('2d');
+    
+    // 대각선 그라데이션 생성 (왼쪽 위에서 오른쪽 아래로)
+    const gradient = context.createLinearGradient(0, 0, canvas.width, canvas.height);
+    gradient.addColorStop(0, '#50AA50'); // 훨씬 더 어두운 연두색 시작
+    gradient.addColorStop(1, '#E0FFE0'); // 밝은 연두색 끝
+    
+    context.fillStyle = gradient;
+    context.fillRect(0, 0, canvas.width, canvas.height);
+    
+    const texture = new THREE.CanvasTexture(canvas);
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 1);
+    
+    return texture;
+  }, []);
+
   return (
     <>
+      <Sky />
       <PortalBase position={portalPosition} scale={20} />
-      <PortalVortex position={[-19.7, 8.5, -22]} scale={[7, 10, 1]} />
-      {/* Floor with level1map.png texture */}
+      <PortalVortex position={[-19.7, 8.5, -22]} scale={[7, 9.8, 1]} />
+      {/* Floor with gradient green color */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
-        <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial map={floorTexture} />
+        <planeGeometry args={[500, 500]} />
+        <meshStandardMaterial map={gradientTexture} />
       </mesh>
     </>
   );
@@ -193,6 +297,7 @@ function Level1() {
 function Level2() {
   return (
     <>
+      <Sky />
       <mesh position={[0, 5, 0]} castShadow receiveShadow>
         <boxGeometry args={[10, 10, 10]} />
         <meshStandardMaterial color="hotpink" />
@@ -215,18 +320,19 @@ function App() {
           camera={{ position: [-0.00, 28.35, 19.76], rotation: [-0.96, -0.00, -0.00] }}
           shadows
         >
-        <ambientLight intensity={3} />
+        <ambientLight intensity={2} />
         <directionalLight 
           position={[50, 50, 25]} 
-          intensity={8} 
+          intensity={4} 
           castShadow
-          shadow-mapSize-width={2048}
-          shadow-mapSize-height={2048}
+          shadow-mapSize-width={4096}
+          shadow-mapSize-height={4096}
           shadow-camera-far={200}
-          shadow-camera-left={-50}
-          shadow-camera-right={50}
-          shadow-camera-top={50}
-          shadow-camera-bottom={-50}
+          shadow-camera-left={-100}
+          shadow-camera-right={100}
+          shadow-camera-top={100}
+          shadow-camera-bottom={-100}
+          shadow-bias={-0.0001}
         />
         {/* Sun visual */}
         <mesh position={[50, 50, 25]}>
