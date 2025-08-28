@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useGLTF, useAnimations, useTexture } from '@react-three/drei';
+import { useGLTF, useAnimations, useTexture, OrbitControls } from '@react-three/drei';
 import * as THREE from 'three';
 import './App.css';
 import { useKeyboardControls } from './useKeyboardControls';
@@ -33,19 +33,29 @@ const initialCameraPosition = new THREE.Vector3(0, 15, 15);
 
 function CameraController({ gameState, characterRef }) {
   const { camera } = useThree();
-
-  useEffect(() => {
-    if (gameState === 'playing_level2') {
-      camera.position.copy(initialCameraPosition);
-      camera.rotation.set(-0.5, 0.00, 0.00);
-    }
-  }, [gameState, camera]);
+  const cameraOffset = new THREE.Vector3(-0.00, 28.35, 19.76); // 고정된 카메라 오프셋
 
   useFrame((state, delta) => {
-    if (gameState === 'entering_portal' && characterRef.current) {
+    if (!characterRef.current) return;
+
+    if (gameState === 'entering_portal') {
       const characterPosition = characterRef.current.position;
       const targetPosition = characterPosition.clone().add(new THREE.Vector3(0, 3, 5));
       camera.position.lerp(targetPosition, delta * 2.0);
+      camera.lookAt(characterPosition);
+      return;
+    }
+
+    if (gameState === 'playing_level1' || gameState === 'playing_level2') {
+      const characterPosition = characterRef.current.position;
+      
+      // 캐릭터 위치에 고정된 오프셋을 더해서 카메라 위치 계산
+      const targetCameraPosition = characterPosition.clone().add(cameraOffset);
+      
+      // 부드러운 카메라 이동 (X, Z만 따라가고 Y는 고정)
+      camera.position.lerp(targetCameraPosition, delta * 5.0);
+      
+      // 캐릭터를 바라보도록 설정
       camera.lookAt(characterPosition);
     }
   });
@@ -201,10 +211,10 @@ function App() {
 
   return (
     <div className="App">
-      <Canvas 
-        camera={{ position: [0,30,30], rotation: [-0.7, 0.0, 0.00] }}
-        shadows
-      >
+              <Canvas 
+          camera={{ position: [-0.00, 28.35, 19.76], rotation: [-0.96, -0.00, -0.00] }}
+          shadows
+        >
         <ambientLight intensity={3} />
         <directionalLight 
           position={[50, 50, 25]} 
@@ -223,6 +233,7 @@ function App() {
           <sphereGeometry args={[3, 16, 16]} />
           <meshBasicMaterial color="#FDB813" />
         </mesh>
+
         <Suspense fallback={null}>
           <Model characterRef={characterRef} gameState={gameState} setGameState={setGameState} />
           <CameraController gameState={gameState} characterRef={characterRef} />
