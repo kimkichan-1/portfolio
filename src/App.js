@@ -26,16 +26,25 @@ function CameraLogger() {
 }
 
 
+
 const portalPosition = new THREE.Vector3(-20, 5, -20);
 const portalRadius = 2;
+const initialCameraPosition = new THREE.Vector3(0.13, 29.52, 27.60);
 
 function CameraController({ gameState, characterRef }) {
   const { camera } = useThree();
 
+  useEffect(() => {
+    if (gameState === 'playing_level2') {
+      camera.position.copy(initialCameraPosition);
+      camera.rotation.set(-0.89, 0.00, 0.00);
+    }
+  }, [gameState, camera]);
+
   useFrame((state, delta) => {
     if (gameState === 'entering_portal' && characterRef.current) {
       const characterPosition = characterRef.current.position;
-      const targetPosition = characterPosition.clone().add(new THREE.Vector3(0, 3, 5)); // Adjusted camera offset
+      const targetPosition = characterPosition.clone().add(new THREE.Vector3(0, 3, 5));
       camera.position.lerp(targetPosition, delta * 2.0);
       camera.lookAt(characterPosition);
     }
@@ -51,10 +60,16 @@ function Model({ characterRef, gameState, setGameState }) {
   const { forward, backward, left, right, shift } = useKeyboardControls();
   const [currentAnimation, setCurrentAnimation] = useState('none');
 
-  // Animation management
+  useEffect(() => {
+    if (gameState === 'playing_level2') {
+      characterRef.current.position.set(0, 0, 10);
+      characterRef.current.scale.set(2, 2, 2);
+    }
+  }, [gameState, characterRef]);
+
   useEffect(() => {
     let animToPlay = 'Idle';
-    if (gameState === 'playing') {
+    if (gameState === 'playing_level1' || gameState === 'playing_level2') {
       if (forward || backward || left || right) {
         animToPlay = shift ? 'Run' : 'Walk';
       }
@@ -71,32 +86,24 @@ function Model({ characterRef, gameState, setGameState }) {
     }
   }, [forward, backward, left, right, shift, actions, currentAnimation, gameState]);
 
-
-  // Movement and interaction logic
   useFrame((state, delta) => {
     if (!characterRef.current) return;
 
     if (gameState === 'entering_portal') {
-      // Target the actual center of the vortex in 3D space
       const portalCenter = portalPosition.clone();
-      
-      // Smoothly move character towards the portal's center
       characterRef.current.position.lerp(portalCenter, delta * 2.0);
-
-      // Scale down
       characterRef.current.scale.lerp(new THREE.Vector3(0.01, 0.01, 0.01), delta * 2);
 
-      // Switch map when character is small enough
       if (characterRef.current.scale.x < 0.05) { 
         if (gameState !== 'switched') {
-          console.log("Map switch triggered!");
-          setGameState('switched');
+          setGameState('playing_level2');
         }
       }
       return;
     }
     
-    if (gameState !== 'playing') return;
+    const isPlaying = gameState === 'playing_level1' || gameState === 'playing_level2';
+    if (!isPlaying) return;
 
     const speed = shift ? 0.3 : 0.1;
     const direction = new THREE.Vector3();
@@ -108,23 +115,22 @@ function Model({ characterRef, gameState, setGameState }) {
 
     if (direction.length() > 0) {
       direction.normalize();
-      
       const targetAngle = Math.atan2(direction.x, direction.z);
       const targetQuaternion = new THREE.Quaternion();
       targetQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAngle);
       characterRef.current.quaternion.slerp(targetQuaternion, 0.25);
-
       characterRef.current.position.add(direction.multiplyScalar(speed));
     }
 
-    // Portal collision detection
-    const characterPos = characterRef.current.position.clone();
-    const portalPos = portalPosition.clone();
-    characterPos.y = 0;
-    portalPos.y = 0;
-    const distanceToPortal = characterPos.distanceTo(portalPos);
-    if (distanceToPortal < portalRadius) {
-      setGameState('entering_portal');
+    if (gameState === 'playing_level1') {
+      const characterPos = characterRef.current.position.clone();
+      const portalPos = portalPosition.clone();
+      characterPos.y = 0;
+      portalPos.y = 0;
+      const distanceToPortal = characterPos.distanceTo(portalPos);
+      if (distanceToPortal < portalRadius) {
+        setGameState('entering_portal');
+      }
     }
   });
 
@@ -140,15 +146,12 @@ function PortalBase(props) {
 
 useGLTF.preload('/portalbase.glb');
 
-function Level1({ characterRef, gameState, setGameState }) {
+function Level1() {
   return (
     <>
-      <Model characterRef={characterRef} gameState={gameState} setGameState={setGameState} />
       <PortalBase position={portalPosition} scale={15} />
       <PortalVortex position={[-19.7, 5.5, -21]} scale={[5, 7, 1]} />
-      <CameraController gameState={gameState} characterRef={characterRef} />
       <gridHelper args={[100, 100]} />
-      <CameraLogger />
     </>
   );
 }
@@ -166,25 +169,23 @@ function Level2() {
 }
 
 function App() {
-  const [gameState, setGameState] = useState('playing'); // playing, entering_portal, switched
+  const [gameState, setGameState] = useState('playing_level1'); // playing_level1, entering_portal, playing_level2
   const characterRef = useRef();
 
   return (
     <div className="App">
-      <Canvas camera={{ position: [0.13, 29.52, 27.60], rotation: [-0.89, 0.00, 0.00] }}>
+      <Canvas camera={{ position: initialCameraPosition, rotation: [-0.89, 0.00, 0.00] }}>
         <ambientLight intensity={1} />
         <directionalLight position={[10, 10, 5]} intensity={1.5} castShadow />
         <Suspense fallback={null}>
-          {gameState === 'switched' ? (
-            <Level2 />
-          ) : (
-            <Level1 characterRef={characterRef} gameState={gameState} setGameState={setGameState} />
-          )}
+          <Model characterRef={characterRef} gameState={gameState} setGameState={setGameState} />
+          <CameraController gameState={gameState} characterRef={characterRef} />
+          <CameraLogger />
+          {gameState === 'playing_level2' ? <Level2 /> : <Level1 />}
         </Suspense>
       </Canvas>
     </div>
   );
 }
-
 
 export default App;
