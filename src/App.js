@@ -27,9 +27,9 @@ function CameraLogger() {
 
 
 
-const portalPosition = new THREE.Vector3(-20, 5, -20);
+const portalPosition = new THREE.Vector3(-20, 8, -20);
 const portalRadius = 2;
-const initialCameraPosition = new THREE.Vector3(0.13, 29.52, 27.60);
+const initialCameraPosition = new THREE.Vector3(0, 15, 15);
 
 function CameraController({ gameState, characterRef }) {
   const { camera } = useThree();
@@ -37,7 +37,7 @@ function CameraController({ gameState, characterRef }) {
   useEffect(() => {
     if (gameState === 'playing_level2') {
       camera.position.copy(initialCameraPosition);
-      camera.rotation.set(-0.89, 0.00, 0.00);
+      camera.rotation.set(-0.5, 0.00, 0.00);
     }
   }, [gameState, camera]);
 
@@ -64,6 +64,16 @@ function Model({ characterRef, gameState, setGameState }) {
     if (gameState === 'playing_level2') {
       characterRef.current.position.set(0, 0, 10);
       characterRef.current.scale.set(2, 2, 2);
+    }
+    
+    // Enable shadows on all meshes in the character model
+    if (characterRef.current) {
+      characterRef.current.traverse((child) => {
+        if (child.isMesh) {
+          child.castShadow = true;
+          child.receiveShadow = true;
+        }
+      });
     }
   }, [gameState, characterRef]);
 
@@ -134,7 +144,15 @@ function Model({ characterRef, gameState, setGameState }) {
     }
   });
 
-  return <primitive ref={characterRef} object={scene} scale={2} />;
+  return (
+    <primitive 
+      ref={characterRef} 
+      object={scene} 
+      scale={2} 
+      castShadow 
+      receiveShadow 
+    />
+  );
 }
 
 useGLTF.preload('/resources/Ultimate Animated Character Pack - Nov 2019/glTF/BaseCharacter.gltf');
@@ -151,10 +169,10 @@ function Level1() {
   
   return (
     <>
-      <PortalBase position={portalPosition} scale={15} />
-      <PortalVortex position={[-19.7, 5.5, -21]} scale={[5, 7, 1]} />
+      <PortalBase position={portalPosition} scale={20} />
+      <PortalVortex position={[-19.7, 8.5, -22]} scale={[7, 10, 1]} />
       {/* Floor with level1map.png texture */}
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[100, 100]} />
         <meshStandardMaterial map={floorTexture} />
       </mesh>
@@ -165,11 +183,14 @@ function Level1() {
 function Level2() {
   return (
     <>
-      <mesh position={[0, 5, 0]}>
+      <mesh position={[0, 5, 0]} castShadow receiveShadow>
         <boxGeometry args={[10, 10, 10]} />
         <meshStandardMaterial color="hotpink" />
       </mesh>
-      <gridHelper args={[100, 100]} position={[0, -5, 0]} />
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -5, 0]} receiveShadow>
+        <planeGeometry args={[100, 100]} />
+        <meshStandardMaterial color="#888888" />
+      </mesh>
     </>
   );
 }
@@ -180,9 +201,28 @@ function App() {
 
   return (
     <div className="App">
-      <Canvas camera={{ position: initialCameraPosition, rotation: [-0.89, 0.00, 0.00] }}>
-        <ambientLight intensity={1} />
-        <directionalLight position={[10, 10, 5]} intensity={1.5} castShadow />
+      <Canvas 
+        camera={{ position: [0,30,30], rotation: [-0.7, 0.0, 0.00] }}
+        shadows
+      >
+        <ambientLight intensity={3} />
+        <directionalLight 
+          position={[50, 50, 25]} 
+          intensity={8} 
+          castShadow
+          shadow-mapSize-width={2048}
+          shadow-mapSize-height={2048}
+          shadow-camera-far={200}
+          shadow-camera-left={-50}
+          shadow-camera-right={50}
+          shadow-camera-top={50}
+          shadow-camera-bottom={-50}
+        />
+        {/* Sun visual */}
+        <mesh position={[50, 50, 25]}>
+          <sphereGeometry args={[3, 16, 16]} />
+          <meshBasicMaterial color="#FDB813" />
+        </mesh>
         <Suspense fallback={null}>
           <Model characterRef={characterRef} gameState={gameState} setGameState={setGameState} />
           <CameraController gameState={gameState} characterRef={characterRef} />
