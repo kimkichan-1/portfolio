@@ -1,6 +1,6 @@
 import React, { Suspense, useRef, useEffect, useState } from 'react';
 import { Canvas, useFrame, useThree } from '@react-three/fiber';
-import { useGLTF, useAnimations } from '@react-three/drei';
+import { useGLTF, useAnimations, useTexture } from '@react-three/drei';
 import * as THREE from 'three';
 import './App.css';
 import { useKeyboardControls } from './useKeyboardControls';
@@ -147,11 +147,17 @@ function PortalBase(props) {
 useGLTF.preload('/portalbase.glb');
 
 function Level1() {
+  const floorTexture = useTexture('/resources/level1map.png');
+  
   return (
     <>
       <PortalBase position={portalPosition} scale={15} />
       <PortalVortex position={[-19.7, 5.5, -21]} scale={[5, 7, 1]} />
-      <gridHelper args={[100, 100]} />
+      {/* Floor with level1map.png texture */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]}>
+        <planeGeometry args={[100, 100]} />
+        <meshStandardMaterial map={floorTexture} />
+      </mesh>
     </>
   );
 }
