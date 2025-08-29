@@ -671,10 +671,6 @@ function Level2() {
   return (
     <>
       <Sky />
-      <mesh position={[0, 5, 0]} castShadow receiveShadow>
-        <boxGeometry args={[10, 10, 10]} />
-        <meshStandardMaterial color="hotpink" />
-      </mesh>
       
       {/* Level1으로 돌아가는 포탈 - 캐릭터 뒤쪽에 배치 */}
       <PortalBase position={[0, 7.5, 23.5]} scale={20} />
