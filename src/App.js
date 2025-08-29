@@ -102,6 +102,9 @@ const portalPosition = new THREE.Vector3(-20, 7.5, -20);
 const portalRadius = 2;
 const portalLevel3Position = new THREE.Vector3(20, 7.5, -20);
 const portalLevel3Radius = 2;
+const portalLevel2ToLevel1Position = new THREE.Vector3(0, 7.5, 23.5);
+const portalLevel2ToLevel1Radius = 2;
+const level2PortalFrontPosition = new THREE.Vector3(-20, 0, -15); // Level2 포탈 앞 위치
 const initialCameraPosition = new THREE.Vector3(0, 15, 15);
 
 function CameraController({ gameState, characterRef }) {
@@ -118,6 +121,8 @@ function CameraController({ gameState, characterRef }) {
       camera.lookAt(characterPosition);
       return;
     }
+
+
 
     if (gameState === 'playing_level1' || gameState === 'playing_level2' || gameState === 'playing_level3') {
       const characterPosition = characterRef.current.position;
@@ -153,6 +158,8 @@ function Model({ characterRef, gameState, setGameState }) {
       characterRef.current.position.set(0, 0, 15);
       characterRef.current.scale.set(2, 2, 2);
     }
+
+
     
     // Enable shadows on all meshes in the character model
     if (characterRef.current) {
@@ -199,7 +206,7 @@ function Model({ characterRef, gameState, setGameState }) {
       }
       return;
     }
-
+    
     if (gameState === 'entering_portal_level3') {
       const portalCenter = portalLevel3Position.clone();
       characterRef.current.position.lerp(portalCenter, delta * 2.0);
@@ -210,6 +217,14 @@ function Model({ characterRef, gameState, setGameState }) {
           setGameState('playing_level3');
         }
       }
+      return;
+    }
+
+    if (gameState === 'entering_portal_back_to_level1') {
+      // Level1로 바로 이동하고 Level2 포탈 앞에 위치
+      characterRef.current.position.copy(level2PortalFrontPosition);
+      characterRef.current.scale.set(2, 2, 2);
+      setGameState('playing_level1');
       return;
     }
     
@@ -256,6 +271,21 @@ function Model({ characterRef, gameState, setGameState }) {
         setGameState('entering_portal_level3');
       }
     }
+
+    if (gameState === 'playing_level2') {
+      const characterPos = characterRef.current.position.clone();
+      
+      // Check Level2 to Level1 portal
+      const portalLevel2ToLevel1Pos = portalLevel2ToLevel1Position.clone();
+      characterPos.y = 0;
+      portalLevel2ToLevel1Pos.y = 0;
+      const distanceToPortalLevel2ToLevel1 = characterPos.distanceTo(portalLevel2ToLevel1Pos);
+      if (distanceToPortalLevel2ToLevel1 < portalLevel2ToLevel1Radius) {
+        setGameState('entering_portal_back_to_level1');
+      }
+    }
+
+
   });
 
   return (
@@ -628,6 +658,16 @@ function Level1({ characterRef }) {
 }
 
 function Level2() {
+  // level2map.png 텍스처 로드
+  const level2Texture = useMemo(() => {
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load('/resources/level2map.png');
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 1);
+    return texture;
+  }, []);
+
   return (
     <>
       <Sky />
@@ -635,9 +675,15 @@ function Level2() {
         <boxGeometry args={[10, 10, 10]} />
         <meshStandardMaterial color="hotpink" />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -5, 0]} receiveShadow>
-        <planeGeometry args={[100, 100]} />
-        <meshStandardMaterial color="#888888" />
+      
+      {/* Level1으로 돌아가는 포탈 - 캐릭터 뒤쪽에 배치 */}
+      <PortalBase position={[0, 7.5, 23.5]} scale={20} />
+      <PortalVortex position={[0.3, 8, 22]} scale={[7, 9.8, 1]} />
+      
+      {/* Floor with level2map.png texture */}
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+        <planeGeometry args={[500, 500]} />
+        <meshStandardMaterial map={level2Texture} />
       </mesh>
     </>
   );
