@@ -89,3 +89,25 @@ export function PortalVortex(props) {
     </mesh>
   );
 }
+
+export function PortalVortexLevel3(props) {
+  const materialRef = useRef();
+
+  useFrame((state) => {
+    if (materialRef.current) {
+      materialRef.current.uTime = state.clock.getElapsedTime();
+    }
+  });
+
+  return (
+    <mesh {...props}>
+      <planeGeometry args={[1, 1]} />
+      <vortexMaterial 
+        ref={materialRef} 
+        transparent={true}
+        uColorStart={new THREE.Color('#FFFFFF')}  // 흰색
+        uColorEnd={new THREE.Color('#FF8C00')}    // 주황색
+      />
+    </mesh>
+  );
+}
