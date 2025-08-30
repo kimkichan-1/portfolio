@@ -161,6 +161,7 @@ function Model({ characterRef, gameState, setGameState }) {
   const [carOriginalPosition] = useState(new THREE.Vector3(0, 0, 0));
   const [carOriginalRotation] = useState(new THREE.Euler(0, Math.PI / 2, 0));
   const [isTransitioning, setIsTransitioning] = useState(false); // 상태 전환 중 플래그
+  const [frontWheelAngle, setFrontWheelAngle] = useState(0); // 앞바퀴 조향 각도
   
   // 안전한 참조를 위한 useRef
   const safeCharacterRef = useRef();
@@ -483,36 +484,72 @@ function Model({ characterRef, gameState, setGameState }) {
 
     if (gameState === 'playing_level2') {
       if (isInCar && safeCarRef.current) {
-        // 자동차 이동 로직 (후륜구동)
+        // 자동차 이동 로직 (후륜구동 + 전륜조향)
         if (safeCarRef.current.current) {
           const car = safeCarRef.current.current;
           const speed = shift ? 0.3 : 0.15;
-          let isMoving = false;
           
-          // 전진/후진 (후륜구동)
-          if (forward) {
-            car.position.add(car.getWorldDirection(new THREE.Vector3()).multiplyScalar(speed));
-            isMoving = true;
-          }
-          if (backward) {
-            car.position.add(car.getWorldDirection(new THREE.Vector3()).multiplyScalar(-speed));
-            isMoving = true;
-          }
-          
-          // 좌우 조향 (전륜조향)
+          // 앞바퀴 조향 (A/D키) - 독립적으로 처리
           if (left) {
-            car.rotation.y += 0.03; // 좌회전
-          }
-          if (right) {
-            car.rotation.y -= 0.03; // 우회전
+            setFrontWheelAngle(prev => Math.min(prev + 0.02, 0.3)); // 좌회전 (최대 0.3)
+          } else if (right) {
+            setFrontWheelAngle(prev => Math.max(prev - 0.02, -0.3)); // 우회전 (최대 -0.3)
+          } else {
+            // 중앙으로 복귀
+            setFrontWheelAngle(prev => {
+              if (Math.abs(prev) < 0.01) return 0;
+              return prev > 0 ? prev - 0.01 : prev + 0.01;
+            });
           }
           
-          // 바퀴 회전 (이동할 때만)
-          if (isMoving && car.wheels) {
-            const wheelSpeed = speed * 20;
-            car.wheels.forEach(wheel => {
-              wheel.rotation.x -= wheelSpeed;
-            });
+          // 전진/후진 (후륜구동) - 앞바퀴 조향에 따라 회전
+          if (forward || backward) {
+            const moveSpeed = forward ? speed : -speed;
+            
+            // 앞바퀴 조향이 있을 때만 회전
+            if (Math.abs(frontWheelAngle) > 0.01) {
+              // 조향 각도에 따른 회전 (방향 수정)
+              const turnSpeed = frontWheelAngle * moveSpeed * 0.8;
+              car.rotation.y += turnSpeed; // 회전 방향 수정
+            }
+            
+            // 차량 이동 (회전된 방향으로)
+            car.position.add(car.getWorldDirection(new THREE.Vector3()).multiplyScalar(moveSpeed));
+            
+            // 바퀴 회전
+            if (car.wheels) {
+              const wheelSpeed = Math.abs(moveSpeed) * 20;
+              
+              // 앞바퀴: 회전 + 조향 (z축 고정, y축 조향)
+              if (car.frontWheels) {
+                car.frontWheels.forEach(wheel => {
+                  // 원래 위치로 복원 (z축 고정)
+                  wheel.position.z = wheel.originalPosition.z;
+                  
+                  // 회전 처리
+                  wheel.rotation.x = wheel.originalRotation.x - (wheelSpeed * 0.1); // 회전만
+                  wheel.rotation.y = wheel.originalRotation.y + frontWheelAngle; // y축 조향
+                });
+              }
+              
+              // 뒷바퀴: 회전만
+              if (car.rearWheels) {
+                car.rearWheels.forEach(wheel => {
+                  wheel.rotation.x -= wheelSpeed;
+                });
+              }
+            }
+          } else {
+            // 정지 시 앞바퀴만 조향 (z축 고정, y축 조향)
+            if (car.frontWheels) {
+              car.frontWheels.forEach(wheel => {
+                // 원래 위치로 복원 (z축 고정)
+                wheel.position.z = wheel.originalPosition.z;
+                
+                // 조향만 처리
+                wheel.rotation.y = wheel.originalRotation.y + frontWheelAngle;
+              });
+            }
           }
         }
       } else if (safeCharacterRef.current) {
@@ -818,12 +855,31 @@ function RaceFuture({ onCarRef, characterRef, ...props }) {
       }
     });
     
-    // 바퀴 참조 저장
+    // 바퀴 참조 저장 (앞바퀴와 뒷바퀴 구분)
     cloned.wheels = [];
+    cloned.frontWheels = [];
+    cloned.rearWheels = [];
+    
     cloned.traverse((child) => {
       if (child.name && child.name.includes('wheel')) {
         cloned.wheels.push(child);
+        
+        // 앞바퀴와 뒷바퀴 구분
+        if (child.name.includes('front')) {
+          cloned.frontWheels.push(child);
+          // 앞바퀴의 원래 위치와 회전 저장 (z축 고정용)
+          child.originalPosition = child.position.clone();
+          child.originalRotation = child.rotation.clone();
+        } else if (child.name.includes('back') || child.name.includes('rear')) {
+          cloned.rearWheels.push(child);
+        }
       }
+    });
+    
+    console.log('바퀴 분류 완료:', {
+      total: cloned.wheels.length,
+      front: cloned.frontWheels.length,
+      rear: cloned.rearWheels.length
     });
     
     return cloned;
@@ -860,6 +916,8 @@ function RaceFuture({ onCarRef, characterRef, ...props }) {
         if (ref && ref.current) {
           // 바퀴 참조를 ref에 추가
           ref.current.wheels = clonedScene.wheels;
+          ref.current.frontWheels = clonedScene.frontWheels;
+          ref.current.rearWheels = clonedScene.rearWheels;
           console.log('바퀴 참조 추가 완료');
           
           // Model 컴포넌트의 handleSetCarRef 함수 직접 호출
