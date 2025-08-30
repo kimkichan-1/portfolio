@@ -463,18 +463,18 @@ function Model({ characterRef, gameState, setGameState }) {
         // 자동차 이동 로직 (후륜구동 + 전륜조향)
         if (safeCarRef.current) {
           const car = safeCarRef.current;
-          const speed = shift ? 0.3 : 0.15;
+          const speed = shift ? 1.2 : 0.8;
           
-          // 앞바퀴 조향 (A/D키) - 독립적으로 처리
+          // 앞바퀴 조향 (A/D키) - 독립적으로 처리 (매우 부드럽게)
           if (left) {
-            setFrontWheelAngle(prev => Math.min(prev + 0.02, 0.3)); // 좌회전 (최대 0.3)
+            setFrontWheelAngle(prev => Math.min(prev + 0.008, 0.2)); // 좌회전 (최대 0.2)
           } else if (right) {
-            setFrontWheelAngle(prev => Math.max(prev - 0.02, -0.3)); // 우회전 (최대 -0.3)
+            setFrontWheelAngle(prev => Math.max(prev - 0.008, -0.2)); // 우회전 (최대 -0.2)
           } else {
-            // 중앙으로 복귀
+            // 중앙으로 복귀 (매우 부드럽게)
             setFrontWheelAngle(prev => {
               if (Math.abs(prev) < 0.01) return 0;
-              return prev > 0 ? prev - 0.01 : prev + 0.01;
+              return prev > 0 ? prev - 0.005 : prev + 0.005;
             });
           }
           
@@ -484,8 +484,8 @@ function Model({ characterRef, gameState, setGameState }) {
             
             // 앞바퀴 조향이 있을 때만 회전
             if (Math.abs(frontWheelAngle) > 0.01) {
-              // 조향 각도에 따른 회전 (방향 수정)
-              const turnSpeed = frontWheelAngle * moveSpeed * 0.8;
+              // 조향 각도에 따른 회전 (매우 부드럽게)
+              const turnSpeed = frontWheelAngle * moveSpeed * 0.2;
               car.rotation.y += turnSpeed; // 회전 방향 수정
             }
             
@@ -494,7 +494,7 @@ function Model({ characterRef, gameState, setGameState }) {
             
             // 바퀴 회전
             if (car.wheels) {
-              const wheelSpeed = Math.abs(moveSpeed) * 20;
+              const wheelSpeed = Math.abs(moveSpeed) * 30;
               
               // 앞바퀴: 회전 + 조향 (z축 고정, y축 조향)
               if (car.frontWheels) {
@@ -504,7 +504,7 @@ function Model({ characterRef, gameState, setGameState }) {
                   
                   // 회전 처리
                   wheel.rotation.x = wheel.originalRotation.x - (wheelSpeed * 0.1); // 회전만
-                  wheel.rotation.y = wheel.originalRotation.y + frontWheelAngle; // y축 조향
+                  wheel.rotation.y = wheel.originalRotation.y - frontWheelAngle; // y축 조향 (방향 수정)
                 });
               }
               
@@ -523,7 +523,7 @@ function Model({ characterRef, gameState, setGameState }) {
                 wheel.position.z = wheel.originalPosition.z;
                 
                 // 조향만 처리
-                wheel.rotation.y = wheel.originalRotation.y + frontWheelAngle;
+                wheel.rotation.y = wheel.originalRotation.y - frontWheelAngle;
               });
             }
           }
