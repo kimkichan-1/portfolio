@@ -189,6 +189,8 @@ function Model({ characterRef, gameState, setGameState }) {
   const [carOriginalRotation] = useState(new THREE.Euler(0, Math.PI / 2, 0));
   const [isTransitioning, setIsTransitioning] = useState(false); // 상태 전환 중 플래그
   const [frontWheelAngle, setFrontWheelAngle] = useState(0); // 앞바퀴 조향 각도
+  const [currentSpeed, setCurrentSpeed] = useState(0); // 현재 속도
+  const [targetSpeed, setTargetSpeed] = useState(0); // 목표 속도
   
   // 안전한 참조를 위한 useRef
   const safeCharacterRef = useRef();
@@ -370,6 +372,8 @@ function Model({ characterRef, gameState, setGameState }) {
     
     // 상태 전환 완료
     setIsTransitioning(false);
+    setCurrentSpeed(0); // 속도 초기화
+    setTargetSpeed(0); // 목표 속도 초기화
   };
 
   useFrame((state, delta) => {
@@ -460,10 +464,34 @@ function Model({ characterRef, gameState, setGameState }) {
 
     if (gameState === 'playing_level2') {
       if (isInCar && safeCarRef.current) {
-        // 자동차 이동 로직 (후륜구동 + 전륜조향)
+        // 자동차 이동 로직 (후륜구동 + 전륜조향 + 가속도 시스템)
         if (safeCarRef.current) {
           const car = safeCarRef.current;
-          const speed = shift ? 1.2 : 0.8;
+          const maxSpeed = shift ? 1.2 : 0.8; // 최대 속도
+          
+          // 목표 속도 설정
+          let newTargetSpeed = 0;
+          if (forward) newTargetSpeed = maxSpeed;
+          else if (backward) newTargetSpeed = -maxSpeed;
+          
+          setTargetSpeed(newTargetSpeed);
+          
+          // 가속도 적용 (부드러운 가속/감속)
+          const acceleration = 0.015; // 가속도 (조금 느리게)
+          const deceleration = 0.005; // 감속도 (더 부드럽게)
+          
+          if (Math.abs(newTargetSpeed - currentSpeed) > 0.01) {
+            if (newTargetSpeed > currentSpeed) {
+              // 가속
+              setCurrentSpeed(prev => Math.min(prev + acceleration, newTargetSpeed));
+            } else if (newTargetSpeed < currentSpeed) {
+              // 감속
+              setCurrentSpeed(prev => Math.max(prev - deceleration, newTargetSpeed));
+            }
+          }
+          
+          // 현재 속도로 이동 계산
+          const speed = currentSpeed;
           
           // 앞바퀴 조향 (A/D키) - 독립적으로 처리 (매우 부드럽게)
           if (left) {
@@ -479,8 +507,8 @@ function Model({ characterRef, gameState, setGameState }) {
           }
           
           // 전진/후진 (후륜구동) - 앞바퀴 조향에 따라 회전
-          if (forward || backward) {
-            const moveSpeed = forward ? speed : -speed;
+          if (Math.abs(speed) > 0.01) { // 속도가 있을 때만 이동
+            const moveSpeed = speed; // speed는 이미 방향이 포함됨 (양수: 전진, 음수: 후진)
             
             // 앞바퀴 조향이 있을 때만 회전
             if (Math.abs(frontWheelAngle) > 0.01) {
@@ -503,7 +531,7 @@ function Model({ characterRef, gameState, setGameState }) {
                   wheel.position.z = wheel.originalPosition.z;
                   
                   // 회전 처리
-                  wheel.rotation.x = wheel.originalRotation.x - (wheelSpeed * 0.1); // 회전만
+                  wheel.rotation.x = wheel.originalRotation.x - wheelSpeed; // 회전 (앞바퀴도 확실히 굴러가게)
                   wheel.rotation.y = wheel.originalRotation.y - frontWheelAngle; // y축 조향 (방향 수정)
                 });
               }
