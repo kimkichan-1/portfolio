@@ -555,6 +555,23 @@ function PalmTree(props) {
 // FBX 파일은 preload 방식이 다름
 // useFBX.preload('/resources/Ultimate Nature Pack - Jun 2019/FBX/PalmTree_1.fbx');
 
+// RaceFuture 컴포넌트 추가
+function RaceFuture(props) {
+  const { scene } = useGLTF('/resources/kenney_car-kit/Models/GLB-format/race-future.glb');
+  const clonedScene = useMemo(() => {
+    const cloned = scene.clone();
+    cloned.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return cloned;
+  }, [scene]);
+  return <primitive object={clonedScene} {...props} />;
+}
+useGLTF.preload('/resources/kenney_car-kit/Models/GLB-format/race-future.glb');
+
 function Level1({ characterRef }) {
   // 돌들의 위치와 속성을 배열로 정의
   const stones = [
@@ -671,6 +688,9 @@ function Level2() {
   return (
     <>
       <Sky />
+      
+      {/* RaceFuture 자동차 추가 */}
+      <RaceFuture position={[0, 0, 0]} scale={5} rotation={[0, Math.PI / 2, 0]} />
       
       {/* Level1으로 돌아가는 포탈 - 캐릭터 뒤쪽에 배치 */}
       <PortalBase position={[0, 7.5, 23.5]} scale={20} />
