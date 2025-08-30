@@ -154,17 +154,7 @@ function CameraController({ gameState, characterRef }) {
       // 타겟 위치에 고정된 오프셋을 더해서 카메라 위치 계산
       const targetCameraPosition = targetPosition.clone().add(cameraOffset);
       
-      // 디버깅: 자동차 탑승 시 매 프레임마다 위치 확인
-      if (currentTargetType === 'car' && characterRef.current?.safeCarRef?.current) {
-        const currentCarPos = characterRef.current.safeCarRef.current.position;
-        if (Math.abs(currentCarPos.x - targetPosition.x) > 0.1 || 
-            Math.abs(currentCarPos.z - targetPosition.z) > 0.1) {
-          console.log('자동차 위치 변화 감지:', {
-            targetPosition: `x:${targetPosition.x.toFixed(1)}, z:${targetPosition.z.toFixed(1)}`,
-            currentCarPos: `x:${currentCarPos.x.toFixed(1)}, z:${currentCarPos.z.toFixed(1)}`
-          });
-        }
-      }
+      // 자동차 위치 변화 감지 로그 제거
       
       // 부드러운 카메라 이동 (X, Z만 따라가고 Y는 고정)
       camera.position.lerp(targetCameraPosition, delta * 5.0);
@@ -200,7 +190,6 @@ function Model({ characterRef, gameState, setGameState }) {
   useEffect(() => {
     if (characterRef.current && safeCarRef.current) {
       characterRef.current.safeCarRef = safeCarRef;
-      console.log('safeCarRef 설정 완료:', safeCarRef.current);
     }
   }, [characterRef.current, safeCarRef.current]);
 
@@ -228,7 +217,6 @@ function Model({ characterRef, gameState, setGameState }) {
       
       // Model 컴포넌트의 handleSetCarRef 함수를 characterRef에 설정
       characterRef.current.modelHandleSetCarRef = handleSetCarRef;
-      console.log('modelHandleSetCarRef 설정 완료');
     }
   }, [gameState, characterRef]);
 
@@ -478,7 +466,7 @@ function Model({ characterRef, gameState, setGameState }) {
           
           // 가속도 적용 (부드러운 가속/감속)
           const acceleration = 0.015; // 가속도 (조금 느리게)
-          const deceleration = 0.005; // 감속도 (더 부드럽게)
+          const deceleration = 0.015; // 감속도 (더 빠르게)
           
           if (Math.abs(newTargetSpeed - currentSpeed) > 0.01) {
             if (newTargetSpeed > currentSpeed) {
@@ -556,10 +544,16 @@ function Model({ characterRef, gameState, setGameState }) {
             }
           }
           
-          // 자동차가 움직일 때마다 캐릭터도 함께 움직이기
-          if (safeCharacterRef.current && (forward || backward || left || right)) {
+          // 자동차에 탑승한 상태에서는 항상 캐릭터를 자동차와 동기화
+          if (safeCharacterRef.current && isInCar) {
             safeCharacterRef.current.position.copy(car.position);
             safeCharacterRef.current.rotation.y = car.rotation.y;
+          }
+          
+          // CameraController에서 접근할 수 있도록 속도 정보 저장
+          if (safeCharacterRef.current) {
+            safeCharacterRef.current.currentSpeed = currentSpeed;
+            safeCharacterRef.current.isMoving = Math.abs(currentSpeed) > 0.01;
           }
         }
       } else if (safeCharacterRef.current) {
