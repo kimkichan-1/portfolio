@@ -6,6 +6,7 @@ const keyActionMap = {
   s: 'backward',
   a: 'left',
   d: 'right',
+  e: 'e',
 };
 
 export const useKeyboardControls = () => {
@@ -16,6 +17,7 @@ export const useKeyboardControls = () => {
     right: false,
     shift: false,
     log: false, // Add log state
+    e: false,
   });
 
   useEffect(() => {

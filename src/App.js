@@ -110,6 +110,8 @@ const initialCameraPosition = new THREE.Vector3(0, 15, 15);
 function CameraController({ gameState, characterRef }) {
   const { camera } = useThree();
   const cameraOffset = new THREE.Vector3(-0.00, 28.35, 19.76); // 고정된 카메라 오프셋
+  const [isInCar, setIsInCar] = useState(false);
+  const [carRef, setCarRef] = useState(null);
 
   useFrame((state, delta) => {
     if (!characterRef.current) return;
@@ -125,16 +127,23 @@ function CameraController({ gameState, characterRef }) {
 
 
     if (gameState === 'playing_level1' || gameState === 'playing_level2' || gameState === 'playing_level3') {
-      const characterPosition = characterRef.current.position;
+      let targetPosition;
       
-      // 캐릭터 위치에 고정된 오프셋을 더해서 카메라 위치 계산
-      const targetCameraPosition = characterPosition.clone().add(cameraOffset);
+      // 자동차에 탑승한 상태인지 확인
+      if (characterRef.current?.isInCar && characterRef.current?.carRef) {
+        targetPosition = characterRef.current.carRef.current.position;
+      } else {
+        targetPosition = characterRef.current.position;
+      }
+      
+      // 타겟 위치에 고정된 오프셋을 더해서 카메라 위치 계산
+      const targetCameraPosition = targetPosition.clone().add(cameraOffset);
       
       // 부드러운 카메라 이동 (X, Z만 따라가고 Y는 고정)
       camera.position.lerp(targetCameraPosition, delta * 5.0);
       
-      // 캐릭터를 바라보도록 설정
-      camera.lookAt(characterPosition);
+      // 타겟을 바라보도록 설정
+      camera.lookAt(targetPosition);
     }
   });
 
@@ -145,8 +154,17 @@ function Model({ characterRef, gameState, setGameState }) {
   const { scene, animations } = useGLTF('/resources/Ultimate Animated Character Pack - Nov 2019/glTF/Worker_Male.gltf');
   const { actions } = useAnimations(animations, characterRef);
   
-  const { forward, backward, left, right, shift } = useKeyboardControls();
+  const { forward, backward, left, right, shift, e } = useKeyboardControls();
   const [currentAnimation, setCurrentAnimation] = useState('none');
+  const [isInCar, setIsInCar] = useState(false);
+  const [carRef, setCarRef] = useState(null);
+  const [carOriginalPosition] = useState(new THREE.Vector3(0, 0, 0));
+  const [carOriginalRotation] = useState(new THREE.Euler(0, Math.PI / 2, 0));
+  const [isTransitioning, setIsTransitioning] = useState(false); // 상태 전환 중 플래그
+  
+  // 안전한 참조를 위한 useRef
+  const safeCharacterRef = useRef();
+  const safeCarRef = useRef();
 
   useEffect(() => {
     if (gameState === 'playing_level2') {
@@ -169,13 +187,17 @@ function Model({ characterRef, gameState, setGameState }) {
           child.receiveShadow = true;
         }
       });
+      
+      // Model 컴포넌트의 handleSetCarRef 함수를 characterRef에 설정
+      characterRef.current.modelHandleSetCarRef = handleSetCarRef;
+      console.log('modelHandleSetCarRef 설정 완료');
     }
   }, [gameState, characterRef]);
 
   useEffect(() => {
     let animToPlay = 'Idle';
     if (gameState === 'playing_level1' || gameState === 'playing_level2' || gameState === 'playing_level3') {
-      if (forward || backward || left || right) {
+      if (!isInCar && (forward || backward || left || right)) {
         animToPlay = shift ? 'Run' : 'Walk';
       }
     } 
@@ -189,17 +211,274 @@ function Model({ characterRef, gameState, setGameState }) {
 
       setCurrentAnimation(animToPlay);
     }
-  }, [forward, backward, left, right, shift, actions, currentAnimation, gameState]);
+  }, [forward, backward, left, right, shift, actions, currentAnimation, gameState, isInCar]);
+
+  // E키 상태 추적을 위한 useRef
+  const lastEKeyState = useRef(false);
+  
+  // 자동차 탑승/하차 처리 (useFrame에서 처리)
+  const handleCarInteraction = () => {
+    // E키가 눌렸을 때만 처리 (상태 변화 감지)
+    if (e && !lastEKeyState.current) {
+      console.log('=== E키 감지 ===');
+      console.log('E키:', e);
+      console.log('게임상태:', gameState);
+      console.log('자동차참조:', characterRef.current?.carRef);
+      console.log('탑승상태:', isInCar);
+      console.log('상태전환중:', isTransitioning);
+      console.log('characterRef.current:', characterRef.current);
+      
+      if (gameState === 'playing_level2' && (characterRef.current?.carRef || safeCarRef.current)) {
+        if (!isInCar && !isTransitioning) {
+          // 자동차 탑승
+          console.log('자동차 탑승 시도');
+          enterCar();
+        } else if (isInCar && !isTransitioning) {
+          // 자동차 하차
+          console.log('자동차 하차 시도');
+          exitCar();
+        } else {
+          console.log('상태 전환 중 - 입력 무시');
+        }
+      } else {
+        console.log('탑승 조건 불만족:');
+        console.log('- 게임상태가 playing_level2:', gameState === 'playing_level2');
+        console.log('- characterRef.carRef 존재:', !!characterRef.current?.carRef);
+        console.log('- safeCarRef 존재:', !!safeCarRef.current);
+        console.log('- 상태 전환 중:', isTransitioning);
+      }
+    }
+    
+    // E키 상태 업데이트
+    lastEKeyState.current = e;
+  };
+
+  // carRef 설정 함수
+  const handleSetCarRef = (ref) => {
+    console.log('=== Model handleSetCarRef 호출 ===');
+    console.log('전달받은 ref:', ref);
+    console.log('ref.current:', ref?.current);
+    console.log('characterRef.current:', characterRef.current);
+    
+    if (ref && ref.current && characterRef.current) {
+      // 안전한 참조에 저장
+      safeCharacterRef.current = characterRef.current;
+      safeCarRef.current = ref;
+      
+      // characterRef.current에도 저장
+      characterRef.current.carRef = ref;
+      console.log('carRef 저장 완료:', characterRef.current.carRef);
+      
+      // 상태도 업데이트
+      setCarRef(ref);
+      
+      console.log('안전한 참조 설정 완료');
+      console.log('safeCharacterRef.current:', safeCharacterRef.current);
+      console.log('safeCarRef.current:', safeCarRef.current);
+      
+      // 저장 확인
+      setTimeout(() => {
+        console.log('저장 후 지연 확인:');
+        console.log('safeCharacterRef.current:', safeCharacterRef.current);
+        console.log('safeCarRef.current:', safeCarRef.current);
+      }, 100);
+    } else {
+      console.log('handleSetCarRef 조건 불만족');
+      console.log('ref 존재:', !!ref);
+      console.log('ref.current 존재:', !!ref?.current);
+      console.log('characterRef.current 존재:', !!characterRef.current);
+    }
+  };
+
+  const enterCar = () => {
+    console.log('=== enterCar 함수 시작 ===');
+    console.log('safeCharacterRef.current:', safeCharacterRef.current);
+    console.log('safeCarRef.current:', safeCarRef.current);
+    
+    if (!safeCarRef.current || isInCar || isTransitioning) {
+      console.log('enterCar 조건 불만족');
+      return;
+    }
+    
+    console.log('자동차 탑승 시작');
+    
+    // 상태 전환 중 플래그 설정
+    setIsTransitioning(true);
+    
+    // 상태를 먼저 설정하여 손실 방지
+    setIsInCar(true);
+    setCurrentAnimation('Sitdown');
+    
+    // 안전한 참조로 자동차 상태 저장
+    if (safeCharacterRef.current) {
+      safeCharacterRef.current.isInCar = true;
+      safeCharacterRef.current.carRef = safeCarRef.current;
+      console.log('safeCharacterRef 상태 설정 완료');
+      
+      // characterRef.current에도 상태 저장 (손실 방지)
+      if (characterRef.current) {
+        characterRef.current.isInCar = true;
+        characterRef.current.carRef = safeCarRef.current;
+        console.log('characterRef 상태 설정 완료');
+      }
+    }
+    
+    // Sitdown 애니메이션 재생
+    if (actions['Sitdown']) {
+      actions['Sitdown'].reset().fadeIn(0.5).play();
+      console.log('Sitdown 애니메이션 시작');
+    }
+    
+    // 캐릭터를 자동차 중앙으로 이동
+    if (safeCharacterRef.current && safeCarRef.current.current) {
+      const carPosition = safeCarRef.current.current.position.clone();
+      safeCharacterRef.current.position.copy(carPosition);
+      console.log('캐릭터 위치 이동 완료');
+      
+      // 캐릭터 방향을 자동차가 바라보는 방향으로 변경
+      safeCharacterRef.current.rotation.y = safeCarRef.current.current.rotation.y;
+      console.log('캐릭터 방향 변경 완료');
+    }
+    
+    // 탑승 완료 후 상태 확인 (더 짧은 지연)
+    setTimeout(() => {
+      console.log('탑승 완료 후 상태 확인:');
+      console.log('isInCar:', isInCar);
+      console.log('safeCharacterRef.current:', safeCharacterRef.current);
+      console.log('safeCarRef.current:', safeCarRef.current);
+      console.log('characterRef.current:', characterRef.current);
+      if (characterRef.current) {
+        console.log('characterRef.current.isInCar:', characterRef.current.isInCar);
+        console.log('characterRef.current.carRef:', characterRef.current.carRef);
+      }
+      
+      // 상태 손실 시 복구 시도
+      if (!isInCar || !safeCharacterRef.current?.isInCar) {
+        console.log('상태 손실 감지, 복구 시도...');
+        setIsInCar(true);
+        if (safeCharacterRef.current) {
+          safeCharacterRef.current.isInCar = true;
+          safeCharacterRef.current.carRef = safeCarRef.current;
+        }
+      }
+      
+      // characterRef.current 손실 시 복구 시도
+      if (!characterRef.current && safeCharacterRef.current) {
+        console.log('characterRef.current 손실 감지, 복구 시도...');
+        // characterRef.current를 safeCharacterRef.current로 복구
+        if (characterRef.current === null) {
+          // React ref는 직접 할당할 수 없으므로, 부모 컴포넌트에서 처리 필요
+          console.log('characterRef.current 복구 불가 - 부모 컴포넌트 처리 필요');
+        }
+      }
+      
+      // 상태 전환 완료
+      setIsTransitioning(false);
+      console.log('탑승 상태 전환 완료');
+    }, 50);
+    
+    console.log('=== enterCar 함수 완료 ===');
+  };
+
+  const exitCar = () => {
+    console.log('=== exitCar 함수 시작 ===');
+    console.log('safeCharacterRef.current:', safeCharacterRef.current);
+    console.log('safeCarRef.current:', safeCarRef.current);
+    
+    if (!safeCarRef.current || !isInCar || isTransitioning) {
+      console.log('exitCar 조건 불만족');
+      return;
+    }
+    
+    console.log('자동차 하차 시작');
+    
+    // 상태 전환 중 플래그 설정
+    setIsTransitioning(true);
+    
+    // 상태를 먼저 설정하여 손실 방지
+    setIsInCar(false);
+    setCurrentAnimation('Standup');
+    
+    // 안전한 참조로 자동차 상태 제거
+    if (safeCharacterRef.current) {
+      safeCharacterRef.current.isInCar = false;
+      safeCharacterRef.current.carRef = null;
+      console.log('safeCharacterRef 상태 제거 완료');
+      
+      // characterRef.current에도 상태 제거 (손실 방지)
+      if (characterRef.current) {
+        characterRef.current.isInCar = false;
+        characterRef.current.carRef = null;
+        console.log('characterRef 상태 제거 완료');
+      }
+    }
+    
+    // Standup 애니메이션 재생
+    if (actions['Standup']) {
+      actions['Standup'].reset().fadeIn(0.5).play();
+      console.log('Standup 애니메이션 시작');
+    }
+    
+    // 자동차를 원래 위치로 복원
+    if (safeCarRef.current.current) {
+      safeCarRef.current.current.position.copy(carOriginalPosition);
+      safeCarRef.current.current.rotation.copy(carOriginalRotation);
+      console.log('자동차 위치 복원 완료');
+    }
+    
+    // 캐릭터를 자동차 바깥으로 이동
+    if (safeCharacterRef.current && safeCarRef.current.current) {
+      const exitPosition = safeCarRef.current.current.position.clone().add(
+        new THREE.Vector3(3, 0, 0).applyEuler(safeCarRef.current.current.rotation)
+      );
+      safeCharacterRef.current.position.copy(exitPosition);
+      console.log('캐릭터 하차 위치 이동 완료');
+    }
+    
+    // 하차 완료 후 상태 확인 (더 짧은 지연)
+    setTimeout(() => {
+      console.log('하차 완료 후 상태 확인:');
+      console.log('isInCar:', isInCar);
+      console.log('safeCharacterRef.current:', safeCharacterRef.current);
+      console.log('safeCarRef.current:', safeCarRef.current);
+      console.log('characterRef.current:', characterRef.current);
+      if (characterRef.current) {
+        console.log('characterRef.current.isInCar:', characterRef.current.isInCar);
+        console.log('characterRef.current.carRef:', characterRef.current.carRef);
+      }
+      
+      // 상태 손실 시 복구 시도
+      if (isInCar || safeCharacterRef.current?.isInCar) {
+        console.log('하차 상태 손실 감지, 복구 시도...');
+        setIsInCar(false);
+        if (safeCharacterRef.current) {
+          safeCharacterRef.current.isInCar = false;
+          safeCharacterRef.current.carRef = null;
+        }
+      }
+      
+      // 상태 전환 완료
+      setIsTransitioning(false);
+      console.log('하차 상태 전환 완료');
+    }, 50);
+    
+    console.log('=== exitCar 함수 완료 ===');
+  };
 
   useFrame((state, delta) => {
-    if (!characterRef.current) return;
+    // 자동차 상호작용 처리
+    handleCarInteraction();
+    
+    // characterRef.current 손실 시 safeCharacterRef.current 사용
+    const currentCharacter = characterRef.current || safeCharacterRef.current;
+    if (!currentCharacter) return;
 
     if (gameState === 'entering_portal') {
       const portalCenter = portalPosition.clone();
-      characterRef.current.position.lerp(portalCenter, delta * 2.0);
-      characterRef.current.scale.lerp(new THREE.Vector3(0.01, 0.01, 0.01), delta * 2);
+      currentCharacter.position.lerp(portalCenter, delta * 2.0);
+      currentCharacter.scale.lerp(new THREE.Vector3(0.01, 0.01, 0.01), delta * 2);
 
-      if (characterRef.current.scale.x < 0.05) { 
+      if (currentCharacter.scale.x < 0.05) { 
         if (gameState !== 'switched') {
           setGameState('playing_level2');
         }
@@ -209,10 +488,10 @@ function Model({ characterRef, gameState, setGameState }) {
     
     if (gameState === 'entering_portal_level3') {
       const portalCenter = portalLevel3Position.clone();
-      characterRef.current.position.lerp(portalCenter, delta * 2.0);
-      characterRef.current.scale.lerp(new THREE.Vector3(0.01, 0.01, 0.01), delta * 2);
+      currentCharacter.position.lerp(portalCenter, delta * 2.0);
+      currentCharacter.scale.lerp(new THREE.Vector3(0.01, 0.01, 0.01), delta * 2);
 
-      if (characterRef.current.scale.x < 0.05) { 
+      if (currentCharacter.scale.x < 0.05) { 
         if (gameState !== 'switched_level3') {
           setGameState('playing_level3');
         }
@@ -222,8 +501,8 @@ function Model({ characterRef, gameState, setGameState }) {
 
     if (gameState === 'entering_portal_back_to_level1') {
       // Level1로 바로 이동하고 Level2 포탈 앞에 위치
-      characterRef.current.position.copy(level2PortalFrontPosition);
-      characterRef.current.scale.set(2, 2, 2);
+      currentCharacter.position.copy(level2PortalFrontPosition);
+      currentCharacter.scale.set(2, 2, 2);
       setGameState('playing_level1');
       return;
     }
@@ -244,12 +523,12 @@ function Model({ characterRef, gameState, setGameState }) {
       const targetAngle = Math.atan2(direction.x, direction.z);
       const targetQuaternion = new THREE.Quaternion();
       targetQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAngle);
-      characterRef.current.quaternion.slerp(targetQuaternion, 0.25);
-      characterRef.current.position.add(direction.multiplyScalar(speed));
+      currentCharacter.quaternion.slerp(targetQuaternion, 0.25);
+      currentCharacter.position.add(direction.multiplyScalar(speed));
     }
 
     if (gameState === 'playing_level1') {
-      const characterPos = characterRef.current.position.clone();
+      const characterPos = currentCharacter.position.clone();
       
       // Check Level2 portal
       const portalPos = portalPosition.clone();
@@ -263,7 +542,7 @@ function Model({ characterRef, gameState, setGameState }) {
       
       // Check Level3 portal
       const portalLevel3Pos = portalLevel3Position.clone();
-      const characterPosLevel3 = characterRef.current.position.clone();
+      const characterPosLevel3 = currentCharacter.position.clone();
       characterPosLevel3.y = 0;
       portalLevel3Pos.y = 0;
       const distanceToPortalLevel3 = characterPosLevel3.distanceTo(portalLevel3Pos);
@@ -273,15 +552,46 @@ function Model({ characterRef, gameState, setGameState }) {
     }
 
     if (gameState === 'playing_level2') {
-      const characterPos = characterRef.current.position.clone();
-      
-      // Check Level2 to Level1 portal
-      const portalLevel2ToLevel1Pos = portalLevel2ToLevel1Position.clone();
-      characterPos.y = 0;
-      portalLevel2ToLevel1Pos.y = 0;
-      const distanceToPortalLevel2ToLevel1 = characterPos.distanceTo(portalLevel2ToLevel1Pos);
-      if (distanceToPortalLevel2ToLevel1 < portalLevel2ToLevel1Radius) {
-        setGameState('entering_portal_back_to_level1');
+      if (isInCar && safeCarRef.current) {
+        // 자동차 이동 로직
+        if (safeCarRef.current.current) {
+          const speed = shift ? 0.3 : 0.15;
+          const direction = new THREE.Vector3();
+          
+          if (forward) direction.z -= 1;
+          if (backward) direction.z += 1;
+          if (left) direction.x -= 1;
+          if (right) direction.x += 1;
+
+          if (direction.length() > 0) {
+            direction.normalize();
+            const targetAngle = Math.atan2(direction.x, direction.z);
+            const targetQuaternion = new THREE.Quaternion();
+            targetQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAngle);
+            safeCarRef.current.current.quaternion.slerp(targetQuaternion, 0.25);
+            safeCarRef.current.current.position.add(direction.multiplyScalar(speed));
+            
+            // 바퀴 회전 (후륜구동)
+            const wheelSpeed = speed * 20; // 바퀴 회전 속도
+            if (safeCarRef.current.current.wheels) {
+              safeCarRef.current.current.wheels.forEach(wheel => {
+                wheel.rotation.x += wheelSpeed;
+              });
+            }
+          }
+        }
+      } else if (safeCharacterRef.current) {
+        // 일반 캐릭터 이동
+        const characterPos = safeCharacterRef.current.position.clone();
+        
+        // Check Level2 to Level1 portal
+        const portalLevel2ToLevel1Pos = portalLevel2ToLevel1Position.clone();
+        characterPos.y = 0;
+        portalLevel2ToLevel1Pos.y = 0;
+        const distanceToPortalLevel2ToLevel1 = characterPos.distanceTo(portalLevel2ToLevel1Pos);
+        if (distanceToPortalLevel2ToLevel1 < portalLevel2ToLevel1Radius) {
+          setGameState('entering_portal_back_to_level1');
+        }
       }
     }
 
@@ -289,13 +599,17 @@ function Model({ characterRef, gameState, setGameState }) {
   });
 
   return (
-    <primitive 
-      ref={characterRef} 
-      object={scene} 
-      scale={2} 
-      castShadow 
-      receiveShadow 
-    />
+    <>
+      {!isInCar && (
+        <primitive 
+          ref={characterRef} 
+          object={scene} 
+          scale={2} 
+          castShadow 
+          receiveShadow 
+        />
+      )}
+    </>
   );
 }
 
@@ -556,8 +870,10 @@ function PalmTree(props) {
 // useFBX.preload('/resources/Ultimate Nature Pack - Jun 2019/FBX/PalmTree_1.fbx');
 
 // RaceFuture 컴포넌트 추가
-function RaceFuture(props) {
+function RaceFuture({ onCarRef, characterRef, ...props }) {
   const { scene } = useGLTF('/resources/kenney_car-kit/Models/GLB-format/race-future.glb');
+  const carRef = useRef();
+  
   const clonedScene = useMemo(() => {
     const cloned = scene.clone();
     cloned.traverse((child) => {
@@ -566,9 +882,62 @@ function RaceFuture(props) {
         child.receiveShadow = true;
       }
     });
+    
+    // 바퀴 참조 저장
+    cloned.wheels = [];
+    cloned.traverse((child) => {
+      if (child.name && child.name.includes('wheel')) {
+        cloned.wheels.push(child);
+      }
+    });
+    
     return cloned;
   }, [scene]);
-  return <primitive object={clonedScene} {...props} />;
+
+  useEffect(() => {
+    if (onCarRef && carRef.current && !window.raceFutureInitialized) {
+      window.raceFutureInitialized = true; // 전역 플래그로 중복 실행 방지
+      console.log('RaceFuture 초기화 시작');
+      
+      // 즉시 호출하되, characterRef 설정이 완료된 후에만
+      const checkAndCall = () => {
+        if (characterRef?.current?.handleSetCarRef) {
+          console.log('onCarRef 콜백 호출');
+          onCarRef(carRef);
+        } else {
+          console.log('handleSetCarRef 대기 중...');
+          setTimeout(checkAndCall, 50);
+        }
+      };
+      checkAndCall();
+    }
+  }, []); // 의존성 배열을 비워서 한 번만 실행
+
+  // Model 컴포넌트에 carRef 설정 함수 추가
+  useEffect(() => {
+    if (characterRef?.current && !window.handleSetCarRefSet) {
+      window.handleSetCarRefSet = true; // 중복 설정 방지
+      console.log('handleSetCarRef 함수 설정');
+      
+      // Model 컴포넌트의 handleSetCarRef 함수를 직접 호출할 수 있도록 설정
+      characterRef.current.handleSetCarRef = (ref) => {
+        console.log('RaceFuture handleSetCarRef 콜백 실행:', ref);
+        if (ref && ref.current) {
+          // 바퀴 참조를 ref에 추가
+          ref.current.wheels = clonedScene.wheels;
+          console.log('바퀴 참조 추가 완료');
+          
+          // Model 컴포넌트의 handleSetCarRef 함수 직접 호출
+          if (characterRef.current.modelHandleSetCarRef) {
+            characterRef.current.modelHandleSetCarRef(ref);
+          }
+        }
+      };
+      console.log('handleSetCarRef 설정 완료');
+    }
+  }, [characterRef, clonedScene.wheels]);
+
+  return <primitive ref={carRef} object={clonedScene} {...props} />;
 }
 useGLTF.preload('/resources/kenney_car-kit/Models/GLB-format/race-future.glb');
 
@@ -674,7 +1043,7 @@ function Level1({ characterRef }) {
   );
 }
 
-function Level2() {
+function Level2({ onCarRef, characterRef }) {
   // level2map.png 텍스처 로드
   const level2Texture = useMemo(() => {
     const loader = new THREE.TextureLoader();
@@ -690,7 +1059,13 @@ function Level2() {
       <Sky />
       
       {/* RaceFuture 자동차 추가 */}
-      <RaceFuture position={[0, 0, 0]} scale={5} rotation={[0, Math.PI / 2, 0]} />
+      <RaceFuture 
+        position={[0, 0, 0]} 
+        scale={5} 
+        rotation={[0, Math.PI / 2, 0]} 
+        onCarRef={onCarRef}
+        characterRef={characterRef}
+      />
       
       {/* Level1으로 돌아가는 포탈 - 캐릭터 뒤쪽에 배치 */}
       <PortalBase position={[0, 7.5, 23.5]} scale={20} />
@@ -759,7 +1134,19 @@ function App() {
           <Model characterRef={characterRef} gameState={gameState} setGameState={setGameState} />
           <CameraController gameState={gameState} characterRef={characterRef} />
           <CameraLogger />
-          {gameState === 'playing_level2' ? <Level2 /> : 
+          {gameState === 'playing_level2' ? <Level2 onCarRef={(ref) => {
+            console.log('=== App onCarRef 콜백 ===');
+            console.log('전달받은 ref:', ref);
+            console.log('characterRef.current:', characterRef.current);
+            console.log('handleSetCarRef 존재:', !!characterRef.current?.handleSetCarRef);
+            
+            if (characterRef.current?.handleSetCarRef) {
+              console.log('handleSetCarRef 호출');
+              characterRef.current.handleSetCarRef(ref);
+            } else {
+              console.log('handleSetCarRef가 정의되지 않음');
+            }
+          }} characterRef={characterRef} /> : 
            gameState === 'playing_level3' ? <Level3 /> : <Level1 characterRef={characterRef} />}
         </Suspense>
       </Canvas>
