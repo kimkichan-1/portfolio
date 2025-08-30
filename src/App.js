@@ -305,28 +305,21 @@ function Model({ characterRef, gameState, setGameState }) {
     // 상태 전환 중 플래그 설정
     setIsTransitioning(true);
     
-    // 상태를 먼저 설정하여 손실 방지
+    // 즉시 탑승 상태 설정
     setIsInCar(true);
-    setCurrentAnimation('Sitdown');
     
-    // 안전한 참조로 자동차 상태 저장
+    // 안전한 참조에 상태 저장
     if (safeCharacterRef.current) {
       safeCharacterRef.current.isInCar = true;
       safeCharacterRef.current.carRef = safeCarRef.current;
-      console.log('safeCharacterRef 상태 설정 완료');
+      console.log('탑승 상태 설정 완료');
       
-      // characterRef.current에도 상태 저장 (손실 방지)
+      // characterRef.current에도 상태 저장
       if (characterRef.current) {
         characterRef.current.isInCar = true;
         characterRef.current.carRef = safeCarRef.current;
         console.log('characterRef 상태 설정 완료');
       }
-    }
-    
-    // Sitdown 애니메이션 재생
-    if (actions['Sitdown']) {
-      actions['Sitdown'].reset().fadeIn(0.5).play();
-      console.log('Sitdown 애니메이션 시작');
     }
     
     // 캐릭터를 자동차 중앙으로 이동
@@ -340,42 +333,9 @@ function Model({ characterRef, gameState, setGameState }) {
       console.log('캐릭터 방향 변경 완료');
     }
     
-    // 탑승 완료 후 상태 확인 (더 짧은 지연)
-    setTimeout(() => {
-      console.log('탑승 완료 후 상태 확인:');
-      console.log('isInCar:', isInCar);
-      console.log('safeCharacterRef.current:', safeCharacterRef.current);
-      console.log('safeCarRef.current:', safeCarRef.current);
-      console.log('characterRef.current:', characterRef.current);
-      if (characterRef.current) {
-        console.log('characterRef.current.isInCar:', characterRef.current.isInCar);
-        console.log('characterRef.current.carRef:', characterRef.current.carRef);
-      }
-      
-      // 상태 손실 시 복구 시도
-      if (!isInCar || !safeCharacterRef.current?.isInCar) {
-        console.log('상태 손실 감지, 복구 시도...');
-        setIsInCar(true);
-        if (safeCharacterRef.current) {
-          safeCharacterRef.current.isInCar = true;
-          safeCharacterRef.current.carRef = safeCarRef.current;
-        }
-      }
-      
-      // characterRef.current 손실 시 복구 시도
-      if (!characterRef.current && safeCharacterRef.current) {
-        console.log('characterRef.current 손실 감지, 복구 시도...');
-        // characterRef.current를 safeCharacterRef.current로 복구
-        if (characterRef.current === null) {
-          // React ref는 직접 할당할 수 없으므로, 부모 컴포넌트에서 처리 필요
-          console.log('characterRef.current 복구 불가 - 부모 컴포넌트 처리 필요');
-        }
-      }
-      
-      // 상태 전환 완료
-      setIsTransitioning(false);
-      console.log('탑승 상태 전환 완료');
-    }, 50);
+    // 상태 전환 완료
+    setIsTransitioning(false);
+    console.log('탑승 완료 - 이제 자동차 조작 가능');
     
     console.log('=== enterCar 함수 완료 ===');
   };
@@ -395,28 +355,21 @@ function Model({ characterRef, gameState, setGameState }) {
     // 상태 전환 중 플래그 설정
     setIsTransitioning(true);
     
-    // 상태를 먼저 설정하여 손실 방지
+    // 즉시 하차 상태 설정
     setIsInCar(false);
-    setCurrentAnimation('Standup');
     
-    // 안전한 참조로 자동차 상태 제거
+    // 안전한 참조에 상태 저장
     if (safeCharacterRef.current) {
       safeCharacterRef.current.isInCar = false;
       safeCharacterRef.current.carRef = null;
-      console.log('safeCharacterRef 상태 제거 완료');
+      console.log('하차 상태 설정 완료');
       
-      // characterRef.current에도 상태 제거 (손실 방지)
+      // characterRef.current에도 상태 제거
       if (characterRef.current) {
         characterRef.current.isInCar = false;
         characterRef.current.carRef = null;
         console.log('characterRef 상태 제거 완료');
       }
-    }
-    
-    // Standup 애니메이션 재생
-    if (actions['Standup']) {
-      actions['Standup'].reset().fadeIn(0.5).play();
-      console.log('Standup 애니메이션 시작');
     }
     
     // 자동차를 원래 위치로 복원
@@ -435,32 +388,9 @@ function Model({ characterRef, gameState, setGameState }) {
       console.log('캐릭터 하차 위치 이동 완료');
     }
     
-    // 하차 완료 후 상태 확인 (더 짧은 지연)
-    setTimeout(() => {
-      console.log('하차 완료 후 상태 확인:');
-      console.log('isInCar:', isInCar);
-      console.log('safeCharacterRef.current:', safeCharacterRef.current);
-      console.log('safeCarRef.current:', safeCarRef.current);
-      console.log('characterRef.current:', characterRef.current);
-      if (characterRef.current) {
-        console.log('characterRef.current.isInCar:', characterRef.current.isInCar);
-        console.log('characterRef.current.carRef:', characterRef.current.carRef);
-      }
-      
-      // 상태 손실 시 복구 시도
-      if (isInCar || safeCharacterRef.current?.isInCar) {
-        console.log('하차 상태 손실 감지, 복구 시도...');
-        setIsInCar(false);
-        if (safeCharacterRef.current) {
-          safeCharacterRef.current.isInCar = false;
-          safeCharacterRef.current.carRef = null;
-        }
-      }
-      
-      // 상태 전환 완료
-      setIsTransitioning(false);
-      console.log('하차 상태 전환 완료');
-    }, 50);
+    // 상태 전환 완료
+    setIsTransitioning(false);
+    console.log('하차 완료 - 이제 캐릭터 이동 가능');
     
     console.log('=== exitCar 함수 완료 ===');
   };
@@ -553,31 +483,36 @@ function Model({ characterRef, gameState, setGameState }) {
 
     if (gameState === 'playing_level2') {
       if (isInCar && safeCarRef.current) {
-        // 자동차 이동 로직
+        // 자동차 이동 로직 (후륜구동)
         if (safeCarRef.current.current) {
+          const car = safeCarRef.current.current;
           const speed = shift ? 0.3 : 0.15;
-          const direction = new THREE.Vector3();
+          let isMoving = false;
           
-          if (forward) direction.z -= 1;
-          if (backward) direction.z += 1;
-          if (left) direction.x -= 1;
-          if (right) direction.x += 1;
-
-          if (direction.length() > 0) {
-            direction.normalize();
-            const targetAngle = Math.atan2(direction.x, direction.z);
-            const targetQuaternion = new THREE.Quaternion();
-            targetQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAngle);
-            safeCarRef.current.current.quaternion.slerp(targetQuaternion, 0.25);
-            safeCarRef.current.current.position.add(direction.multiplyScalar(speed));
-            
-            // 바퀴 회전 (후륜구동)
-            const wheelSpeed = speed * 20; // 바퀴 회전 속도
-            if (safeCarRef.current.current.wheels) {
-              safeCarRef.current.current.wheels.forEach(wheel => {
-                wheel.rotation.x += wheelSpeed;
-              });
-            }
+          // 전진/후진 (후륜구동)
+          if (forward) {
+            car.position.add(car.getWorldDirection(new THREE.Vector3()).multiplyScalar(speed));
+            isMoving = true;
+          }
+          if (backward) {
+            car.position.add(car.getWorldDirection(new THREE.Vector3()).multiplyScalar(-speed));
+            isMoving = true;
+          }
+          
+          // 좌우 조향 (전륜조향)
+          if (left) {
+            car.rotation.y += 0.03; // 좌회전
+          }
+          if (right) {
+            car.rotation.y -= 0.03; // 우회전
+          }
+          
+          // 바퀴 회전 (이동할 때만)
+          if (isMoving && car.wheels) {
+            const wheelSpeed = speed * 20;
+            car.wheels.forEach(wheel => {
+              wheel.rotation.x -= wheelSpeed;
+            });
           }
         }
       } else if (safeCharacterRef.current) {
@@ -601,13 +536,13 @@ function Model({ characterRef, gameState, setGameState }) {
   return (
     <>
       {!isInCar && (
-        <primitive 
-          ref={characterRef} 
-          object={scene} 
-          scale={2} 
-          castShadow 
-          receiveShadow 
-        />
+    <primitive 
+      ref={characterRef} 
+      object={scene} 
+      scale={2} 
+      castShadow 
+      receiveShadow 
+    />
       )}
     </>
   );
