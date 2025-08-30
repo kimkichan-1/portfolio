@@ -481,11 +481,11 @@ function Model({ characterRef, gameState, setGameState }) {
           // 현재 속도로 이동 계산
           const speed = currentSpeed;
           
-          // 앞바퀴 조향 (A/D키) - 독립적으로 처리 (매우 부드럽게)
+          // 앞바퀴 조향 (A/D키) - 독립적으로 처리 (더 빠르게)
           if (left) {
-            setFrontWheelAngle(prev => Math.min(prev + 0.008, 0.2)); // 좌회전 (최대 0.2)
+            setFrontWheelAngle(prev => Math.max(prev - 0.02, -0.2)); // 좌회전 (최대 -0.2, 더 빠르게)
           } else if (right) {
-            setFrontWheelAngle(prev => Math.max(prev - 0.008, -0.2)); // 우회전 (최대 -0.2)
+            setFrontWheelAngle(prev => Math.min(prev + 0.02, 0.2)); // 우회전 (최대 0.2, 더 빠르게)
           } else {
             // 중앙으로 복귀 (매우 부드럽게)
             setFrontWheelAngle(prev => {
@@ -501,7 +501,7 @@ function Model({ characterRef, gameState, setGameState }) {
             // 앞바퀴 조향이 있을 때만 회전
             if (Math.abs(frontWheelAngle) > 0.01) {
               // 조향 각도에 따른 회전 (매우 부드럽게)
-              const turnSpeed = frontWheelAngle * moveSpeed * 0.2;
+              const turnSpeed = -frontWheelAngle * moveSpeed * 0.2; // 회전 속도 원래대로
               car.rotation.y += turnSpeed; // 회전 방향 수정
             }
             
@@ -512,14 +512,20 @@ function Model({ characterRef, gameState, setGameState }) {
             if (car.wheels) {
               const wheelSpeed = Math.abs(moveSpeed) * 30;
               
-              // 앞바퀴: 회전 + 조향 (z축 고정, y축 조향)
+              // 앞바퀴: 조향이 없을 때만 회전 + 조향이 있을 때는 조향만
               if (car.frontWheels) {
                 car.frontWheels.forEach(wheel => {
                   // 원래 위치로 복원 (z축 고정)
                   wheel.position.z = wheel.originalPosition.z;
                   
-                  // 회전 처리
-                  wheel.rotation.x = wheel.originalRotation.x - wheelSpeed; // 회전 (앞바퀴도 확실히 굴러가게)
+                  // 조향이 거의 없을 때만 회전 처리 (계속 굴러가도록)
+                  if (Math.abs(frontWheelAngle) < 0.01 && Math.abs(moveSpeed) > 0.01) {
+                    wheel.rotation.x -= wheelSpeed; // 누적 회전 (계속 굴러감)
+                  } else {
+                    wheel.rotation.x = wheel.originalRotation.x; // 조향이 있으면 원래 위치로
+                  }
+                  
+                  // 조향 처리 (항상 적용)
                   wheel.rotation.y = wheel.originalRotation.y - frontWheelAngle; // y축 조향 (방향 수정)
                 });
               }
@@ -532,14 +538,15 @@ function Model({ characterRef, gameState, setGameState }) {
               }
             }
           } else {
-            // 정지 시 앞바퀴만 조향 (z축 고정, y축 조향)
+            // 정지 시 앞바퀴만 조향 (z축 고정, y축 조향, 회전 없음)
             if (car.frontWheels) {
               car.frontWheels.forEach(wheel => {
                 // 원래 위치로 복원 (z축 고정)
                 wheel.position.z = wheel.originalPosition.z;
                 
-                // 조향만 처리
-                wheel.rotation.y = wheel.originalRotation.y - frontWheelAngle;
+                // 회전은 하지 않고 조향만 처리
+                wheel.rotation.x = wheel.originalRotation.x; // 회전하지 않음
+                wheel.rotation.y = wheel.originalRotation.y - frontWheelAngle; // y축 조향만
               });
             }
           }
@@ -574,14 +581,14 @@ function Model({ characterRef, gameState, setGameState }) {
 
   });
 
-    return (
+  return (
     <>
-      <primitive 
-        ref={characterRef} 
-        object={scene} 
-        scale={2} 
-        castShadow 
-        receiveShadow 
+    <primitive 
+      ref={characterRef} 
+      object={scene} 
+      scale={2} 
+      castShadow 
+      receiveShadow 
         visible={!isInCar} // 자동차 탑승 시 투명하게
       />
     </>
