@@ -182,9 +182,64 @@ function Model({ characterRef, gameState, setGameState }) {
   const [currentSpeed, setCurrentSpeed] = useState(0); // 현재 속도
   const [targetSpeed, setTargetSpeed] = useState(0); // 목표 속도
   
+  // 발걸음 소리를 위한 오디오 시스템
+  const stepAudioRef = useRef(null);
+  const lastStepTimeRef = useRef(0);
+  const stepIntervalRef = useRef(0.5); // 발걸음 간격 (초)
+  
   // 안전한 참조를 위한 useRef
   const safeCharacterRef = useRef();
   const safeCarRef = useRef();
+  
+  // 발걸음 소리 로드 및 재생 함수
+  useEffect(() => {
+    // 발걸음 소리 로드 (여러 경로 시도, .wav 파일 우선)
+    const audioPaths = [
+      '/resources/Sounds/Step1.wav',
+      '/resources/Sounds/step1.wav',
+      '/Sounds/Step1.wav',
+      '/resources/Sounds/Step1.mp3',
+      '/resources/Sounds/step1.mp3',
+      '/Sounds/Step1.mp3'
+    ];
+    
+    // 첫 번째 경로로 시도
+    stepAudioRef.current = new Audio(audioPaths[0]);
+    stepAudioRef.current.volume = 1.0; // 볼륨을 최대로 설정
+    stepAudioRef.current.preload = 'auto';
+    
+    // 오디오 로드 확인
+    stepAudioRef.current.addEventListener('canplaythrough', () => {
+      // 발걸음 소리 로드 완료
+    });
+    
+    stepAudioRef.current.addEventListener('error', (e) => {
+      // 다른 경로 시도
+      for (let i = 1; i < audioPaths.length; i++) {
+        const newAudio = new Audio(audioPaths[i]);
+        newAudio.volume = 1.0;
+        newAudio.preload = 'auto';
+        
+        newAudio.addEventListener('canplaythrough', () => {
+          stepAudioRef.current = newAudio;
+        });
+        
+        newAudio.addEventListener('error', () => {
+          // 발걸음 소리 로드 실패
+        });
+      }
+    });
+  }, []);
+  
+  // 발걸음 소리 재생 함수
+  const playStepSound = () => {
+    if (stepAudioRef.current) {
+      stepAudioRef.current.currentTime = 0; // 처음부터 재생
+      stepAudioRef.current.play().catch(e => {
+        // 발걸음 소리 재생 실패
+      });
+    }
+  };
   
   // CameraController에서 접근할 수 있도록 characterRef에 저장
   useEffect(() => {
@@ -236,6 +291,12 @@ function Model({ characterRef, gameState, setGameState }) {
       if (newAction) newAction.reset().fadeIn(0.5).play();
 
       setCurrentAnimation(animToPlay);
+      
+      // 걷기/뛰기 애니메이션 시작 시 발걸음 소리 시작
+      if (animToPlay === 'Walk' || animToPlay === 'Run') {
+        lastStepTimeRef.current = Date.now();
+        stepIntervalRef.current = animToPlay === 'Run' ? 0.45 : 0.6; // 더 빠른 발걸음 간격
+      }
     }
   }, [forward, backward, left, right, shift, actions, currentAnimation, gameState, isInCar]);
 
@@ -424,6 +485,15 @@ function Model({ characterRef, gameState, setGameState }) {
       targetQuaternion.setFromAxisAngle(new THREE.Vector3(0, 1, 0), targetAngle);
       currentCharacter.quaternion.slerp(targetQuaternion, 0.25);
       currentCharacter.position.add(direction.multiplyScalar(speed));
+      
+      // 발걸음 소리 재생
+      if (!isInCar && (currentAnimation === 'Walk' || currentAnimation === 'Run')) {
+        const currentTime = Date.now();
+        if (currentTime - lastStepTimeRef.current > stepIntervalRef.current * 1000) {
+          playStepSound();
+          lastStepTimeRef.current = currentTime;
+        }
+      }
     }
 
     if (gameState === 'playing_level1') {
