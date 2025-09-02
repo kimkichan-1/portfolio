@@ -104,7 +104,10 @@ const portalLevel3Position = new THREE.Vector3(20, 7.5, -20);
 const portalLevel3Radius = 2;
 const portalLevel2ToLevel1Position = new THREE.Vector3(0, 7.5, 23.5);
 const portalLevel2ToLevel1Radius = 2;
+const portalLevel3ToLevel1Position = new THREE.Vector3(0, 7.5, 23.5);
+const portalLevel3ToLevel1Radius = 2;
 const level2PortalFrontPosition = new THREE.Vector3(-20, 0, -15); // Level2 포탈 앞 위치
+const level3PortalFrontPosition = new THREE.Vector3(20, 0, -15); // Level3 포탈 앞 위치
 const initialCameraPosition = new THREE.Vector3(0, 15, 15);
 
 function CameraController({ gameState, characterRef }) {
@@ -466,6 +469,14 @@ function Model({ characterRef, gameState, setGameState }) {
       setGameState('playing_level1');
       return;
     }
+
+    if (gameState === 'entering_portal_level3_to_level1') {
+      // Level1로 바로 이동하고 Level3 포탈 앞에 위치
+      currentCharacter.position.copy(level3PortalFrontPosition);
+      currentCharacter.scale.set(2, 2, 2);
+      setGameState('playing_level1');
+      return;
+    }
     
     const isPlaying = gameState === 'playing_level1' || gameState === 'playing_level2' || gameState === 'playing_level3';
     if (!isPlaying) return;
@@ -645,6 +656,19 @@ function Model({ characterRef, gameState, setGameState }) {
         if (distanceToPortalLevel2ToLevel1 < portalLevel2ToLevel1Radius) {
           setGameState('entering_portal_back_to_level1');
         }
+      }
+    }
+
+    // Level3에서 Level1로 가는 포탈 체크
+    if (gameState === 'playing_level3' && currentCharacter) {
+      const characterPos = currentCharacter.position.clone();
+      const portalLevel3ToLevel1Pos = portalLevel3ToLevel1Position.clone();
+      characterPos.y = 0;
+      portalLevel3ToLevel1Pos.y = 0;
+      const distanceToPortalLevel3ToLevel1 = characterPos.distanceTo(portalLevel3ToLevel1Pos);
+      
+      if (distanceToPortalLevel3ToLevel1 < portalLevel3ToLevel1Radius) {
+        setGameState('entering_portal_level3_to_level1');
       }
     }
 
@@ -1169,8 +1193,13 @@ function Level3() {
         <sphereGeometry args={[3, 16, 16]} />
         <meshStandardMaterial color="#FFFFFF" />
       </mesh>
-      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, -5, 0]} receiveShadow>
-        <planeGeometry args={[100, 100]} />
+      
+      {/* Level1로 가는 포탈 - Level3 포탈과 똑같은 색상과 모양 */}
+      <PortalBase position={portalLevel3ToLevel1Position} scale={20} />
+      <PortalVortexLevel3 position={[0.3, 8, 22]} scale={[7, 9.8, 1]} />
+      
+      <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
+        <planeGeometry args={[500, 500]} />
         <meshStandardMaterial color="#FFE4B5" />
       </mesh>
     </>
