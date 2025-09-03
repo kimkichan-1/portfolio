@@ -1181,17 +1181,78 @@ function Level2({ onCarRef, characterRef }) {
   );
 }
 
+function GameMap(props) {
+  const { scene } = useGLTF('/GameMap.glb');
+  
+  // GameMap 모델을 복사해서 각 인스턴스가 독립적으로 작동하도록 함
+  const clonedScene = useMemo(() => {
+    const cloned = scene.clone();
+    cloned.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return cloned;
+  }, [scene]);
+  
+  return <primitive object={clonedScene} {...props} />;
+}
+
+function GameMap2(props) {
+  const { scene } = useGLTF('/GameMap2.glb');
+  
+  // GameMap2 모델을 복사해서 각 인스턴스가 독립적으로 작동하도록 함
+  const clonedScene = useMemo(() => {
+    const cloned = scene.clone();
+    cloned.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+      }
+    });
+    return cloned;
+  }, [scene]);
+  
+  return <primitive object={clonedScene} {...props} />;
+}
+
+useGLTF.preload('/GameMap.glb');
+useGLTF.preload('/GameMap2.glb');
+
 function Level3() {
+  // Map1.png 텍스처 로드
+  const map1Texture = useMemo(() => {
+    const loader = new THREE.TextureLoader();
+    const texture = loader.load('/Map1.png');
+    texture.wrapS = THREE.RepeatWrapping;
+    texture.wrapT = THREE.RepeatWrapping;
+    texture.repeat.set(1, 1);
+    return texture;
+  }, []);
+
   return (
     <>
       <Sky />
-      <mesh position={[0, 5, 0]} castShadow receiveShadow>
-        <boxGeometry args={[8, 8, 8]} />
-        <meshStandardMaterial color="#FF8C00" />
-      </mesh>
-      <mesh position={[10, 3, 5]} castShadow receiveShadow>
-        <sphereGeometry args={[3, 16, 16]} />
-        <meshStandardMaterial color="#FFFFFF" />
+      
+      {/* GameMap.glb 모델 렌더링 - 크기와 각도 조절 가능 */}
+      <GameMap 
+        position={[50, 0, -50]} 
+        scale={[1, 1, 1]}  // X, Y, Z 각각 크기 조절 가능
+        rotation={[0, Math.PI / 2, 0]}  // Y축으로 45도 회전
+      />
+      
+      {/* GameMap2.glb 모델 렌더링 - 크기와 각도 조절 가능 */}
+      <GameMap2 
+        position={[46, -2.2, -130]} 
+        scale={[0.8, 0.8, 0.8]}  // X, Y, Z 각각 크기 조절 가능
+        rotation={[0, Math.PI / 2, 0]}  // 회전 없음
+      />
+      
+      {/* Map1.png 텍스처를 GameMap 밑에 배치 */}
+      <mesh rotation={[-Math.PI / 2, 0, Math.PI / 2]} position={[46, 0.01, -50]} receiveShadow>
+        <planeGeometry args={[81, 81]} />
+        <meshStandardMaterial map={map1Texture} />
       </mesh>
       
       {/* Level1로 가는 포탈 - Level3 포탈과 똑같은 색상과 모양 */}
