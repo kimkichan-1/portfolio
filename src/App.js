@@ -190,6 +190,12 @@ function Model({ characterRef, gameState, setGameState }) {
   const lastStepTimeRef = useRef(0);
   const stepIntervalRef = useRef(0.5); // 발걸음 간격 (초)
   
+  // 자동차 소리를 위한 오디오 시스템
+  const carOpenAudioRef = useRef(null);
+  const carCloseAudioRef = useRef(null);
+  
+
+  
   // 안전한 참조를 위한 useRef
   const safeCharacterRef = useRef();
   const safeCarRef = useRef();
@@ -233,6 +239,36 @@ function Model({ characterRef, gameState, setGameState }) {
       }
     });
   }, []);
+
+  // 자동차 소리 로드 및 재생 함수
+  useEffect(() => {
+    // 자동차 문 열기 소리 로드
+    carOpenAudioRef.current = new Audio('/sounds/opencar.mp3');
+    carOpenAudioRef.current.volume = 0.8;
+    carOpenAudioRef.current.preload = 'auto';
+    
+    // 자동차 문 닫기 소리 로드
+    carCloseAudioRef.current = new Audio('/sounds/closecar.mp3');
+    carCloseAudioRef.current.volume = 0.8;
+    carCloseAudioRef.current.preload = 'auto';
+    
+    // 오디오 로드 확인
+    carOpenAudioRef.current.addEventListener('canplaythrough', () => {
+      // 자동차 문 열기 소리 로드 완료
+    });
+    
+    carCloseAudioRef.current.addEventListener('canplaythrough', () => {
+      // 자동차 문 닫기 소리 로드 완료
+    });
+    
+    carOpenAudioRef.current.addEventListener('error', (e) => {
+      console.log('자동차 문 열기 소리 로드 실패:', e);
+    });
+    
+    carCloseAudioRef.current.addEventListener('error', (e) => {
+      console.log('자동차 문 닫기 소리 로드 실패:', e);
+    });
+  }, []);
   
   // 발걸음 소리 재생 함수
   const playStepSound = () => {
@@ -243,6 +279,27 @@ function Model({ characterRef, gameState, setGameState }) {
       });
     }
   };
+
+  // 자동차 소리 재생 함수들
+  const playCarOpenSound = () => {
+    if (carOpenAudioRef.current) {
+      carOpenAudioRef.current.currentTime = 0; // 처음부터 재생
+      carOpenAudioRef.current.play().catch(e => {
+        console.log('자동차 문 열기 소리 재생 실패:', e);
+      });
+    }
+  };
+
+  const playCarCloseSound = () => {
+    if (carCloseAudioRef.current) {
+      carCloseAudioRef.current.currentTime = 0; // 처음부터 재생
+      carCloseAudioRef.current.play().catch(e => {
+        console.log('자동차 문 닫기 소리 재생 실패:', e);
+      });
+    }
+  };
+
+
   
   // CameraController에서 접근할 수 있도록 characterRef에 저장
   useEffect(() => {
@@ -352,6 +409,9 @@ function Model({ characterRef, gameState, setGameState }) {
       return;
     }
     
+    // 자동차 문 열기 소리 재생
+    playCarOpenSound();
+    
     // 상태 전환 중 플래그 설정
     setIsTransitioning(true);
     
@@ -389,6 +449,9 @@ function Model({ characterRef, gameState, setGameState }) {
     if (!safeCarRef.current || !isInCar || isTransitioning) {
       return;
     }
+    
+    // 자동차 문 닫기 소리 재생
+    playCarCloseSound();
     
     // 상태 전환 중 플래그 설정
     setIsTransitioning(true);
@@ -643,6 +706,8 @@ function Model({ characterRef, gameState, setGameState }) {
             safeCharacterRef.current.currentSpeed = currentSpeed;
             safeCharacterRef.current.isMoving = Math.abs(currentSpeed) > 0.01;
           }
+          
+
         }
       } else if (safeCharacterRef.current) {
         // 일반 캐릭터 이동
