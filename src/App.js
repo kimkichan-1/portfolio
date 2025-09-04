@@ -1157,15 +1157,15 @@ function Level1({ characterRef }) {
   return (
     <>
       <Sky />
-      <PortalBase position={portalPosition} scale={20} />
-      <PortalVortex position={[-19.7, 8, -22]} scale={[7, 9.8, 1]} />
+      <PortalBase position={portalPosition} scale={20} castShadow receiveShadow />
+      <PortalVortex position={[-19.7, 8, -22]} scale={[7, 9.8, 1]} castShadow receiveShadow />
       
       {/* Level3 Portal */}
-      <PortalBase position={portalLevel3Position} scale={20} />
-      <PortalVortexLevel3 position={[20.3, 8, -22]} scale={[7, 9.8, 1]} />
+      <PortalBase position={portalLevel3Position} scale={20} castShadow receiveShadow />
+      <PortalVortexLevel3 position={[20.3, 8, -22]} scale={[7, 9.8, 1]} castShadow receiveShadow />
       
       {/* Path stones leading to the portal */}
-      <PathStone position={[-22, 0.2, -13]} scale={7} rotation={[0, -0.2, 0]} />
+      <PathStone position={[-22, 0.2, -13]} scale={7} rotation={[0, -0.2, 0]} castShadow receiveShadow />
       
       {/* Small stones scattered around the level */}
       {stones.map((stone, index) => (
@@ -1173,7 +1173,9 @@ function Level1({ characterRef }) {
           key={index} 
           position={stone.position} 
           scale={stone.scale} 
-          rotation={stone.rotation} 
+          rotation={stone.rotation}
+          castShadow
+          receiveShadow
         />
       ))}
 
@@ -1183,7 +1185,9 @@ function Level1({ characterRef }) {
           key={index} 
           position={tree.position} 
           scale={tree.scale} 
-          rotation={tree.rotation} 
+          rotation={tree.rotation}
+          castShadow
+          receiveShadow
         />
       ))}
 
@@ -1231,11 +1235,13 @@ function Level2({ onCarRef, characterRef }) {
         rotation={[0, Math.PI / 2, 0]} 
         onCarRef={onCarRef}
         characterRef={characterRef}
+        castShadow
+        receiveShadow
       />
       
       {/* Level1으로 돌아가는 포탈 - 캐릭터 뒤쪽에 배치 */}
-      <PortalBase position={[0, 7.5, 23.5]} scale={20} />
-      <PortalVortex position={[0.3, 8, 22]} scale={[7, 9.8, 1]} />
+      <PortalBase position={[0, 7.5, 23.5]} scale={20} castShadow receiveShadow />
+      <PortalVortex position={[0.3, 8, 22]} scale={[7, 9.8, 1]} castShadow receiveShadow />
       
       {/* Floor with level2map.png texture */}
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
@@ -1305,6 +1311,8 @@ function Level3() {
         position={[50, 0, -50]} 
         scale={[1, 1, 1]}  // X, Y, Z 각각 크기 조절 가능
         rotation={[0, Math.PI / 2, 0]}  // Y축으로 45도 회전
+        castShadow
+        receiveShadow
       />
       
       {/* GameMap2.glb 모델 렌더링 - 크기와 각도 조절 가능 */}
@@ -1312,6 +1320,8 @@ function Level3() {
         position={[46, -2.2, -130]} 
         scale={[0.8, 0.8, 0.8]}  // X, Y, Z 각각 크기 조절 가능
         rotation={[0, Math.PI / 2, 0]}  // 회전 없음
+        castShadow
+        receiveShadow
       />
       
       {/* Map1.png 텍스처를 GameMap 밑에 배치 */}
@@ -1321,8 +1331,8 @@ function Level3() {
       </mesh>
       
       {/* Level1로 가는 포탈 - Level3 포탈과 똑같은 색상과 모양 */}
-      <PortalBase position={portalLevel3ToLevel1Position} scale={20} />
-      <PortalVortexLevel3 position={[0.3, 8, 22]} scale={[7, 9.8, 1]} />
+      <PortalBase position={portalLevel3ToLevel1Position} scale={20} castShadow receiveShadow />
+      <PortalVortexLevel3 position={[0.3, 8, 22]} scale={[7, 9.8, 1]} castShadow receiveShadow />
       
       <mesh rotation={[-Math.PI / 2, 0, 0]} position={[0, 0, 0]} receiveShadow>
         <planeGeometry args={[500, 500]} />
@@ -1342,19 +1352,21 @@ function App() {
           camera={{ position: [-0.00, 28.35, 19.76], rotation: [-0.96, -0.00, -0.00] }}
           shadows
         >
-        <ambientLight intensity={2} />
+        <ambientLight intensity={0.5} />
         <directionalLight 
           position={[50, 50, 25]} 
-          intensity={4} 
+          intensity={6} 
           castShadow
-          shadow-mapSize-width={4096}
-          shadow-mapSize-height={4096}
-          shadow-camera-far={200}
-          shadow-camera-left={-100}
-          shadow-camera-right={100}
-          shadow-camera-top={100}
-          shadow-camera-bottom={-100}
+          shadow-mapSize-width={8192}
+          shadow-mapSize-height={8192}
+          shadow-camera-far={1000}
+          shadow-camera-left={-500}
+          shadow-camera-right={500}
+          shadow-camera-top={500}
+          shadow-camera-bottom={-500}
           shadow-bias={-0.0001}
+          shadow-normalBias={0.02}
+          shadow-radius={4}
         />
         {/* Sun visual */}
         <mesh position={[50, 50, 25]}>
