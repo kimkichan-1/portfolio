@@ -1107,6 +1107,224 @@ function RaceFuture({ onCarRef, characterRef, ...props }) {
 }
 useGLTF.preload('/resources/kenney_car-kit/Models/GLB-format/race-future.glb');
 
+// 둥근 모서리를 가진 정육면체 컴포넌트
+function RoundedCube({ position, scale, ...props }) {
+  const geometry = useMemo(() => {
+    // RoundedBoxGeometry를 사용하여 둥근 모서리 정육면체 생성
+    return new THREE.BoxGeometry(1, 1, 1, 2, 2, 2, 0.1); // 마지막 매개변수가 둥근 정도
+  }, []);
+
+  return (
+    <mesh geometry={geometry} position={position} scale={scale} {...props}>
+      <meshStandardMaterial 
+        color="white" 
+        roughness={0.3}
+        metalness={0.1}
+      />
+    </mesh>
+  );
+}
+
+// GitHub Cat 컴포넌트 추가
+function GitHubCat(props) {
+  const { scene } = useGLTF('/githubcat.glb');
+  
+  // GitHub Cat 모델을 복사해서 각 인스턴스가 독립적으로 작동하도록 함
+  const clonedScene = useMemo(() => {
+    const cloned = scene.clone();
+    cloned.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        // 동상처럼 어두운 회색 재질 적용
+        child.material = new THREE.MeshStandardMaterial({
+          color: '#404040', // 더 어두운 회색
+          roughness: 0.8,
+          metalness: 0.2
+        });
+      }
+    });
+    return cloned;
+  }, [scene]);
+  
+  return <primitive object={clonedScene} {...props} />;
+}
+
+// Mailbox 컴포넌트 추가
+function Mailbox(props) {
+  const { scene } = useGLTF('/mailbox.glb');
+  
+  // Mailbox 모델을 복사해서 각 인스턴스가 독립적으로 작동하도록 함
+  const clonedScene = useMemo(() => {
+    const cloned = scene.clone();
+    cloned.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        // 동상처럼 어두운 회색 재질 적용
+        child.material = new THREE.MeshStandardMaterial({
+          color: '#404040', // 더 어두운 회색
+          roughness: 0.8,
+          metalness: 0.2
+        });
+      }
+    });
+    return cloned;
+  }, [scene]);
+  
+  return <primitive object={clonedScene} {...props} />;
+}
+
+// GitHub Cat과 RoundedCube를 묶는 그룹 컴포넌트
+function GitHubCatGroup({ position = [0, 0, 0], ...props }) {
+  return (
+    <group position={position} {...props}>
+      {/* 둥근 정육면체 (GitHub Cat의 받침대) */}
+      <RoundedCube 
+        position={[0, 1.5, 0]} 
+        scale={[3, 3, 3]}
+        castShadow
+        receiveShadow
+      />
+      
+      {/* 정육면체 앞 바닥에 흰색 테두리 사각형 */}
+      <mesh position={[0, 0.01, 4]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
+        <ringGeometry args={[2.2, 2.6, 4]} />
+        <meshStandardMaterial color="white" side={THREE.DoubleSide} />
+      </mesh>
+      
+      {/* 정육면체 앞면에 "Github" 텍스트 */}
+      <Text
+        position={[0, 1.5, 1.6]} // 정육면체 앞면에 위치
+        fontSize={0.8}
+        color="black"
+        anchorX="center"
+        anchorY="middle"
+        rotation={[0, 0, 0]}
+      >
+        Github
+      </Text>
+      
+      {/* GitHub Cat 모델 */}
+      <GitHubCat 
+        position={[0, 4.5, 0]} 
+        scale={[1.5, 1.5, 1.5]} 
+        rotation={[0, 0, 0]}
+        castShadow
+        receiveShadow
+      />
+    </group>
+  );
+}
+
+// Instagram Logo 컴포넌트 추가
+function InstagramLogo(props) {
+  const { scene } = useGLTF('/instagramlogo.glb');
+  
+  // Instagram Logo 모델을 복사해서 각 인스턴스가 독립적으로 작동하도록 함
+  const clonedScene = useMemo(() => {
+    const cloned = scene.clone();
+    cloned.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        // 원래 색상 유지 (재질 변경하지 않음)
+      }
+    });
+    return cloned;
+  }, [scene]);
+  
+  return <primitive object={clonedScene} {...props} />;
+}
+
+// Mailbox와 RoundedCube를 묶는 그룹 컴포넌트
+function MailboxGroup({ position = [0, 0, 0], ...props }) {
+  return (
+    <group position={position} {...props}>
+      {/* 둥근 정육면체 (Mailbox의 받침대) */}
+      <RoundedCube 
+        position={[0, 1.5, 0]} 
+        scale={[3, 3, 3]}
+        castShadow
+        receiveShadow
+      />
+      
+      {/* 정육면체 앞 바닥에 흰색 테두리 사각형 */}
+      <mesh position={[0, 0.01, 4]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
+        <ringGeometry args={[2.2, 2.6, 4]} />
+        <meshStandardMaterial color="white" side={THREE.DoubleSide} />
+      </mesh>
+      
+      {/* 정육면체 앞면에 "Mail" 텍스트 */}
+      <Text
+        position={[0, 1.5, 1.6]} // 정육면체 앞면에 위치
+        fontSize={0.8}
+        color="black"
+        anchorX="center"
+        anchorY="middle"
+        rotation={[0, 0, 0]}
+      >
+        Mail
+      </Text>
+      
+      {/* Mailbox 모델 */}
+      <Mailbox 
+        position={[0, 4.3, 0]} 
+        scale={[1.5, 1.5, 1.5]} 
+        rotation={[0, 0, 0]}
+        castShadow
+        receiveShadow
+      />
+    </group>
+  );
+}
+
+// Instagram Logo와 RoundedCube를 묶는 그룹 컴포넌트
+function InstagramGroup({ position = [0, 0, 0], ...props }) {
+  return (
+    <group position={position} {...props}>
+      {/* 둥근 정육면체 (Instagram Logo의 받침대) */}
+      <RoundedCube 
+        position={[0, 1.5, 0]} 
+        scale={[3, 3, 3]}
+        castShadow
+        receiveShadow
+      />
+      
+      {/* 정육면체 앞 바닥에 흰색 테두리 사각형 */}
+      <mesh position={[0, 0.01, 4]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
+        <ringGeometry args={[2.2, 2.6, 4]} />
+        <meshStandardMaterial color="white" side={THREE.DoubleSide} />
+      </mesh>
+      
+      {/* 정육면체 앞면에 "SNS" 텍스트 */}
+      <Text
+        position={[0, 1.5, 1.6]} // 정육면체 앞면에 위치
+        fontSize={0.8}
+        color="black"
+        anchorX="center"
+        anchorY="middle"
+        rotation={[0, 0, 0]}
+      >
+        SNS
+      </Text>
+      
+      {/* Instagram Logo 모델 */}
+      <InstagramLogo 
+        position={[0, 4.4, 0]} 
+        scale={[5, 5, 5]} 
+        rotation={[Math.PI / 2, 0, 0]}
+        castShadow
+        receiveShadow
+      />
+    </group>
+  );
+}
+
+useGLTF.preload('/githubcat.glb');
+useGLTF.preload('/mailbox.glb');
+useGLTF.preload('/instagramlogo.glb');
+
 function Level1({ characterRef }) {
   // 돌들의 위치와 속성을 배열로 정의
   const stones = [
@@ -1193,6 +1411,27 @@ function Level1({ characterRef }) {
 
       {/* NPC Character */}
       <NPCCharacter position={[-27, 0, -8]} playerRef={characterRef} />
+      
+      {/* GitHub Cat 그룹 (둥근 정육면체 + GitHub Cat) */}
+      <GitHubCatGroup 
+        position={[-6, 0.2, 20]}
+        castShadow
+        receiveShadow
+      />
+      
+      {/* Mailbox 그룹 (둥근 정육면체 + Mailbox) */}
+      <MailboxGroup 
+        position={[0, 0.2, 20]}
+        castShadow
+        receiveShadow
+      />
+      
+      {/* Instagram 그룹 (둥근 정육면체 + Instagram Logo) */}
+      <InstagramGroup 
+        position={[6, 0.2, 20]}
+        castShadow
+        receiveShadow
+      />
       
       {/* 숨겨진 텍스트로 프리로드 - 화면 밖에 배치 */}
       <Text
