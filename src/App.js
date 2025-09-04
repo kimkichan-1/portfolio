@@ -1181,22 +1181,22 @@ function GitHubCatGroup({ position = [0, 0, 0], ...props }) {
     <group position={position} {...props}>
       {/* 둥근 정육면체 (GitHub Cat의 받침대) */}
       <RoundedCube 
-        position={[0, 1.5, 0]} 
-        scale={[3, 3, 3]}
+        position={[0, 2, 0]} 
+        scale={[4, 4, 4]}
         castShadow
         receiveShadow
       />
       
       {/* 정육면체 앞 바닥에 흰색 테두리 사각형 */}
-      <mesh position={[0, 0.01, 4]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
-        <ringGeometry args={[2.2, 2.6, 4]} />
+      <mesh position={[0, 0.01, 5]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
+        <ringGeometry args={[3, 3.5, 4]} />
         <meshStandardMaterial color="white" side={THREE.DoubleSide} />
       </mesh>
       
       {/* 정육면체 앞면에 "Github" 텍스트 */}
       <Text
-        position={[0, 1.5, 1.6]} // 정육면체 앞면에 위치
-        fontSize={0.8}
+        position={[0, 2, 2.1]} // 정육면체 가운데에 위치
+        fontSize={1.2}
         color="black"
         anchorX="center"
         anchorY="middle"
@@ -1207,8 +1207,8 @@ function GitHubCatGroup({ position = [0, 0, 0], ...props }) {
       
       {/* GitHub Cat 모델 */}
       <GitHubCat 
-        position={[0, 4.5, 0]} 
-        scale={[1.5, 1.5, 1.5]} 
+        position={[0, 6.2, 0]} 
+        scale={[2.3, 2.3, 2.3]} 
         rotation={[0, 0, 0]}
         castShadow
         receiveShadow
@@ -1243,22 +1243,22 @@ function MailboxGroup({ position = [0, 0, 0], ...props }) {
     <group position={position} {...props}>
       {/* 둥근 정육면체 (Mailbox의 받침대) */}
       <RoundedCube 
-        position={[0, 1.5, 0]} 
-        scale={[3, 3, 3]}
+        position={[0, 2, 0]} 
+        scale={[4, 4, 4]}
         castShadow
         receiveShadow
       />
       
       {/* 정육면체 앞 바닥에 흰색 테두리 사각형 */}
-      <mesh position={[0, 0.01, 4]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
-        <ringGeometry args={[2.2, 2.6, 4]} />
+      <mesh position={[0, 0.01, 5]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
+        <ringGeometry args={[3, 3.5, 4]} />
         <meshStandardMaterial color="white" side={THREE.DoubleSide} />
       </mesh>
       
       {/* 정육면체 앞면에 "Mail" 텍스트 */}
       <Text
-        position={[0, 1.5, 1.6]} // 정육면체 앞면에 위치
-        fontSize={0.8}
+        position={[0, 2, 2.1]} // 정육면체 가운데에 위치
+        fontSize={1.2}
         color="black"
         anchorX="center"
         anchorY="middle"
@@ -1269,8 +1269,8 @@ function MailboxGroup({ position = [0, 0, 0], ...props }) {
       
       {/* Mailbox 모델 */}
       <Mailbox 
-        position={[0, 4.3, 0]} 
-        scale={[1.5, 1.5, 1.5]} 
+        position={[0, 6, 0]} 
+        scale={[2.3, 2.3, 2.3]} 
         rotation={[0, 0, 0]}
         castShadow
         receiveShadow
@@ -1285,22 +1285,22 @@ function InstagramGroup({ position = [0, 0, 0], ...props }) {
     <group position={position} {...props}>
       {/* 둥근 정육면체 (Instagram Logo의 받침대) */}
       <RoundedCube 
-        position={[0, 1.5, 0]} 
-        scale={[3, 3, 3]}
+        position={[0, 2, 0]} 
+        scale={[4, 4, 4]}
         castShadow
         receiveShadow
       />
       
       {/* 정육면체 앞 바닥에 흰색 테두리 사각형 */}
-      <mesh position={[0, 0.01, 4]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
-        <ringGeometry args={[2.2, 2.6, 4]} />
+      <mesh position={[0, 0.01, 5]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
+        <ringGeometry args={[3, 3.5, 4]} />
         <meshStandardMaterial color="white" side={THREE.DoubleSide} />
       </mesh>
       
       {/* 정육면체 앞면에 "SNS" 텍스트 */}
       <Text
-        position={[0, 1.5, 1.6]} // 정육면체 앞면에 위치
-        fontSize={0.8}
+        position={[0, 2, 2.1]} // 정육면체 가운데에 위치
+        fontSize={1.2}
         color="black"
         anchorX="center"
         anchorY="middle"
@@ -1311,8 +1311,8 @@ function InstagramGroup({ position = [0, 0, 0], ...props }) {
       
       {/* Instagram Logo 모델 */}
       <InstagramLogo 
-        position={[0, 4.4, 0]} 
-        scale={[5, 5, 5]} 
+        position={[0, 6.2, 0]} 
+        scale={[6, 6, 6]} 
         rotation={[Math.PI / 2, 0, 0]}
         castShadow
         receiveShadow
