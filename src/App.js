@@ -1321,9 +1321,30 @@ function InstagramGroup({ position = [0, 0, 0], ...props }) {
   );
 }
 
+// Toolbox 컴포넌트 추가
+function Toolbox(props) {
+  const { scene } = useGLTF('/toolbox.glb');
+  
+  // Toolbox 모델을 복사해서 각 인스턴스가 독립적으로 작동하도록 함
+  const clonedScene = useMemo(() => {
+    const cloned = scene.clone();
+    cloned.traverse((child) => {
+      if (child.isMesh) {
+        child.castShadow = true;
+        child.receiveShadow = true;
+        // 원래 재질 유지 (색상 변경하지 않음)
+      }
+    });
+    return cloned;
+  }, [scene]);
+  
+  return <primitive object={clonedScene} {...props} />;
+}
+
 useGLTF.preload('/githubcat.glb');
 useGLTF.preload('/mailbox.glb');
 useGLTF.preload('/instagramlogo.glb');
+useGLTF.preload('/toolbox.glb');
 
 function Level1({ characterRef }) {
   // 돌들의 위치와 속성을 배열로 정의
@@ -1429,6 +1450,15 @@ function Level1({ characterRef }) {
       {/* Instagram 그룹 (둥근 정육면체 + Instagram Logo) */}
       <InstagramGroup 
         position={[6, 0.2, 20]}
+        castShadow
+        receiveShadow
+      />
+      
+      {/* 도구상자 추가 */}
+      <Toolbox 
+        position={[-12, 1.2, 25]} 
+        scale={[1.5, 1.5, 1.5]} 
+        rotation={[0, Math.PI / 4, 0]}
         castShadow
         receiveShadow
       />
