@@ -7,6 +7,78 @@ import './App.css';
 import { useKeyboardControls } from './useKeyboardControls';
 import { PortalVortex, PortalVortexLevel3 } from './PortalVortex';
 
+// 커스텀 팝업 함수
+function showCustomPopup(message) {
+  // 기존 팝업이 있다면 제거
+  const existingPopup = document.getElementById('custom-popup');
+  if (existingPopup) {
+    existingPopup.remove();
+  }
+
+  // 팝업 컨테이너 생성
+  const popup = document.createElement('div');
+  popup.id = 'custom-popup';
+  popup.style.cssText = `
+    position: fixed;
+    top: 30%;
+    left: 50%;
+    transform: translate(-50%, -50%);
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    padding: 20px 30px;
+    border-radius: 15px;
+    box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+    font-family: 'Arial', sans-serif;
+    font-size: 16px;
+    font-weight: bold;
+    text-align: center;
+    z-index: 10000;
+    border: 2px solid rgba(255, 255, 255, 0.2);
+    backdrop-filter: blur(10px);
+    animation: popupSlideIn 0.3s ease-out;
+    min-width: 300px;
+  `;
+
+  // 애니메이션 CSS 추가
+  const style = document.createElement('style');
+  style.textContent = `
+    @keyframes popupSlideIn {
+      from {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+      to {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+    }
+    @keyframes popupSlideOut {
+      from {
+        opacity: 1;
+        transform: translate(-50%, -50%) scale(1);
+      }
+      to {
+        opacity: 0;
+        transform: translate(-50%, -50%) scale(0.8);
+      }
+    }
+  `;
+  document.head.appendChild(style);
+
+  popup.textContent = message;
+  document.body.appendChild(popup);
+
+  // 2초 후 자동으로 사라지게 하기
+  setTimeout(() => {
+    popup.style.animation = 'popupSlideOut 0.3s ease-in';
+    setTimeout(() => {
+      if (popup.parentNode) {
+        popup.parentNode.removeChild(popup);
+      }
+    }, 300);
+  }, 2000);
+}
+
 // 그라데이션 바닥을 위한 셰이더 머티리얼 (그림자 지원)
 const GradientFloorMaterial = shaderMaterial(
   // Uniforms
@@ -1179,18 +1251,19 @@ function Mailbox(props) {
 function GitHubCatGroup({ position = [0, 0, 0], characterRef, ...props }) {
   const [isPlayerNear, setIsPlayerNear] = useState(false);
   const [showPortal, setShowPortal] = useState(false);
+  const [portalScale, setPortalScale] = useState(0);
   const { enter } = useKeyboardControls();
   const lastEnterState = useRef(false);
   const portalMaterialRef = useRef();
   
   // Enter키 처리
   useEffect(() => {
-    if (enter && !lastEnterState.current && isPlayerNear) {
+    if (enter && !lastEnterState.current && showPortal) {
       // GitHub URL을 새 탭에서 열기
       window.open('https://github.com/kimkichan-1', '_blank');
     }
     lastEnterState.current = enter;
-  }, [enter, isPlayerNear]);
+  }, [enter, isPlayerNear, showPortal]);
   
   // 플레이어와의 거리 체크 (흰색 사각형 기준) 및 포탈 애니메이션
   useFrame((state, delta) => {
@@ -1207,14 +1280,29 @@ function GitHubCatGroup({ position = [0, 0, 0], characterRef, ...props }) {
       const playerPosition = characterRef.current.position;
       const distance = squarePosition.distanceTo(playerPosition);
       
-      const nearDistance = 3; // 가까운 거리
+      const maxDistance = 5; // 포탈이 보이기 시작하는 최대 거리
+      const minDistance = 3; // 포탈이 최대 크기가 되는 최소 거리
+      const nearDistance = 3; // Enter키가 작동하는 거리
+      
+      // 거리에 따른 포탈 크기 계산 (0에서 1 사이)
+      const normalizedDistance = Math.max(0, Math.min(1, (distance - minDistance) / (maxDistance - minDistance)));
+      const scale = 1 - normalizedDistance; // 가까울수록 1, 멀수록 0
+      
+      // 포탈 표시 여부 결정
+      const shouldShowPortal = distance < maxDistance;
       const wasNear = isPlayerNear;
       const nowNear = distance < nearDistance;
       
+      if (shouldShowPortal !== showPortal) {
+        setShowPortal(shouldShowPortal);
+      }
+      
       if (wasNear !== nowNear) {
         setIsPlayerNear(nowNear);
-        setShowPortal(nowNear);
       }
+      
+      // 포탈 크기 업데이트 (부드러운 전환)
+      setPortalScale(scale);
     }
   });
   
@@ -1237,12 +1325,13 @@ function GitHubCatGroup({ position = [0, 0, 0], characterRef, ...props }) {
              {/* 포탈 효과 - 플레이어가 가까이 있을 때만 표시 */}
        {showPortal && (
          <group position={[0, 0.02, 5]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
-           {/* PortalVortex와 같은 스타일의 포탈 - 흰색과 밝은 회색 */}
-           <mesh scale={[4.9, 4.9, 1]}>
+           {/* PortalVortex와 같은 스타일의 포탈 - 거리에 따라 크기 변화 */}
+           <mesh scale={[4.9 * portalScale, 4.9 * portalScale, 1]}>
              <planeGeometry args={[1, 1]} />
              <vortexMaterial 
                ref={portalMaterialRef}
                transparent={true}
+               opacity={portalScale} // 거리에 따라 투명도도 변화
                uColorStart={new THREE.Color('#FFFFFF')}  // 흰색
                uColorEnd={new THREE.Color('#E0E0E0')}    // 밝은 회색
              />
@@ -1295,7 +1384,76 @@ function InstagramLogo(props) {
 }
 
 // Mailbox와 RoundedCube를 묶는 그룹 컴포넌트
-function MailboxGroup({ position = [0, 0, 0], ...props }) {
+function MailboxGroup({ position = [0, 0, 0], characterRef, ...props }) {
+  const [isPlayerNear, setIsPlayerNear] = useState(false);
+  const [showPortal, setShowPortal] = useState(false);
+  const [portalScale, setPortalScale] = useState(0);
+  const { enter } = useKeyboardControls();
+  const lastEnterState = useRef(false);
+  const portalMaterialRef = useRef();
+  
+  // Enter키 처리 - 이메일 주소 복사
+  useEffect(() => {
+    if (enter && !lastEnterState.current && showPortal) {
+      // 이메일 주소를 클립보드에 복사
+      navigator.clipboard.writeText('vxbc52@gmail.com').then(() => {
+        // 복사 완료 팝업 표시
+        showCustomPopup('vxbc52@gmail.com이 복사되었습니다.');
+      }).catch(() => {
+        // 클립보드 복사 실패 시 대체 방법
+        const textArea = document.createElement('textarea');
+        textArea.value = 'vxbc52@gmail.com';
+        document.body.appendChild(textArea);
+        textArea.select();
+        document.execCommand('copy');
+        document.body.removeChild(textArea);
+        showCustomPopup('vxbc52@gmail.com이 복사되었습니다.');
+      });
+    }
+    lastEnterState.current = enter;
+  }, [enter, isPlayerNear, showPortal]);
+  
+  // 플레이어와의 거리 체크 (흰색 사각형 기준) 및 포탈 애니메이션
+  useFrame((state, delta) => {
+    // 포탈 애니메이션 업데이트
+    if (portalMaterialRef.current) {
+      portalMaterialRef.current.uTime = state.clock.getElapsedTime();
+    }
+    
+    if (characterRef?.current) {
+      // 흰색 사각형의 위치 계산 (정육면체 앞 5 유닛)
+      const groupPosition = new THREE.Vector3(...position);
+      const squarePosition = groupPosition.clone().add(new THREE.Vector3(0, 0, 5));
+      
+      const playerPosition = characterRef.current.position;
+      const distance = squarePosition.distanceTo(playerPosition);
+      
+      const maxDistance = 5; // 포탈이 보이기 시작하는 최대 거리
+      const minDistance = 3; // 포탈이 최대 크기가 되는 최소 거리
+      const nearDistance = 3; // Enter키가 작동하는 거리
+      
+      // 거리에 따른 포탈 크기 계산 (0에서 1 사이)
+      const normalizedDistance = Math.max(0, Math.min(1, (distance - minDistance) / (maxDistance - minDistance)));
+      const scale = 1 - normalizedDistance; // 가까울수록 1, 멀수록 0
+      
+      // 포탈 표시 여부 결정
+      const shouldShowPortal = distance < maxDistance;
+      const wasNear = isPlayerNear;
+      const nowNear = distance < nearDistance;
+      
+      if (shouldShowPortal !== showPortal) {
+        setShowPortal(shouldShowPortal);
+      }
+      
+      if (wasNear !== nowNear) {
+        setIsPlayerNear(nowNear);
+      }
+      
+      // 포탈 크기 업데이트 (부드러운 전환)
+      setPortalScale(scale);
+    }
+  });
+  
   return (
     <group position={position} {...props}>
       {/* 둥근 정육면체 (Mailbox의 받침대) */}
@@ -1311,6 +1469,23 @@ function MailboxGroup({ position = [0, 0, 0], ...props }) {
         <ringGeometry args={[3, 3.5, 4]} />
         <meshStandardMaterial color="white" side={THREE.DoubleSide} />
       </mesh>
+      
+      {/* 포탈 효과 - 플레이어가 가까이 있을 때만 표시 */}
+      {showPortal && (
+        <group position={[0, 0.02, 5]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
+          {/* PortalVortex와 같은 스타일의 포탈 - 거리에 따라 크기 변화 */}
+          <mesh scale={[4.9 * portalScale, 4.9 * portalScale, 1]}>
+            <planeGeometry args={[1, 1]} />
+            <vortexMaterial 
+              ref={portalMaterialRef}
+              transparent={true}
+              opacity={portalScale} // 거리에 따라 투명도도 변화
+              uColorStart={new THREE.Color('#FFFFFF')}  // 흰색
+              uColorEnd={new THREE.Color('#E0E0E0')}    // 밝은 회색
+            />
+          </mesh>
+        </group>
+      )}
       
       {/* 정육면체 앞면에 "Mail" 텍스트 */}
       <Text
@@ -1337,7 +1512,64 @@ function MailboxGroup({ position = [0, 0, 0], ...props }) {
 }
 
 // Instagram Logo와 RoundedCube를 묶는 그룹 컴포넌트
-function InstagramGroup({ position = [0, 0, 0], ...props }) {
+function InstagramGroup({ position = [0, 0, 0], characterRef, ...props }) {
+  const [isPlayerNear, setIsPlayerNear] = useState(false);
+  const [showPortal, setShowPortal] = useState(false);
+  const [portalScale, setPortalScale] = useState(0);
+  const { enter } = useKeyboardControls();
+  const lastEnterState = useRef(false);
+  const portalMaterialRef = useRef();
+  
+  // Enter키 처리 - Instagram URL 열기
+  useEffect(() => {
+    if (enter && !lastEnterState.current && showPortal) {
+      // Instagram URL을 새 탭에서 열기
+      window.open('https://www.instagram.com/kim_kichan/#', '_blank');
+    }
+    lastEnterState.current = enter;
+  }, [enter, isPlayerNear, showPortal]);
+  
+  // 플레이어와의 거리 체크 (흰색 사각형 기준) 및 포탈 애니메이션
+  useFrame((state, delta) => {
+    // 포탈 애니메이션 업데이트
+    if (portalMaterialRef.current) {
+      portalMaterialRef.current.uTime = state.clock.getElapsedTime();
+    }
+    
+    if (characterRef?.current) {
+      // 흰색 사각형의 위치 계산 (정육면체 앞 5 유닛)
+      const groupPosition = new THREE.Vector3(...position);
+      const squarePosition = groupPosition.clone().add(new THREE.Vector3(0, 0, 5));
+      
+      const playerPosition = characterRef.current.position;
+      const distance = squarePosition.distanceTo(playerPosition);
+      
+      const maxDistance = 5; // 포탈이 보이기 시작하는 최대 거리
+      const minDistance = 3; // 포탈이 최대 크기가 되는 최소 거리
+      const nearDistance = 3; // Enter키가 작동하는 거리
+      
+      // 거리에 따른 포탈 크기 계산 (0에서 1 사이)
+      const normalizedDistance = Math.max(0, Math.min(1, (distance - minDistance) / (maxDistance - minDistance)));
+      const scale = 1 - normalizedDistance; // 가까울수록 1, 멀수록 0
+      
+      // 포탈 표시 여부 결정
+      const shouldShowPortal = distance < maxDistance;
+      const wasNear = isPlayerNear;
+      const nowNear = distance < nearDistance;
+      
+      if (shouldShowPortal !== showPortal) {
+        setShowPortal(shouldShowPortal);
+      }
+      
+      if (wasNear !== nowNear) {
+        setIsPlayerNear(nowNear);
+      }
+      
+      // 포탈 크기 업데이트 (부드러운 전환)
+      setPortalScale(scale);
+    }
+  });
+  
   return (
     <group position={position} {...props}>
       {/* 둥근 정육면체 (Instagram Logo의 받침대) */}
@@ -1353,6 +1585,23 @@ function InstagramGroup({ position = [0, 0, 0], ...props }) {
         <ringGeometry args={[3, 3.5, 4]} />
         <meshStandardMaterial color="white" side={THREE.DoubleSide} />
       </mesh>
+      
+      {/* 포탈 효과 - 플레이어가 가까이 있을 때만 표시 */}
+      {showPortal && (
+        <group position={[0, 0.02, 5]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
+          {/* PortalVortex와 같은 스타일의 포탈 - 거리에 따라 크기 변화 */}
+          <mesh scale={[4.9 * portalScale, 4.9 * portalScale, 1]}>
+            <planeGeometry args={[1, 1]} />
+            <vortexMaterial 
+              ref={portalMaterialRef}
+              transparent={true}
+              opacity={portalScale} // 거리에 따라 투명도도 변화
+              uColorStart={new THREE.Color('#FFFFFF')}  // 흰색
+              uColorEnd={new THREE.Color('#E0E0E0')}    // 밝은 회색
+            />
+          </mesh>
+        </group>
+      )}
       
       {/* 정육면체 앞면에 "SNS" 텍스트 */}
       <Text
@@ -1501,6 +1750,7 @@ function Level1({ characterRef }) {
       {/* Mailbox 그룹 (둥근 정육면체 + Mailbox) */}
       <MailboxGroup 
         position={[0, 0.2, 20]}
+        characterRef={characterRef}
         castShadow
         receiveShadow
       />
@@ -1508,6 +1758,7 @@ function Level1({ characterRef }) {
       {/* Instagram 그룹 (둥근 정육면체 + Instagram Logo) */}
       <InstagramGroup 
         position={[6, 0.2, 20]}
+        characterRef={characterRef}
         castShadow
         receiveShadow
       />

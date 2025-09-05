@@ -7,6 +7,7 @@ const keyActionMap = {
   a: 'left',
   d: 'right',
   e: 'e',
+  enter: 'enter',
 };
 
 export const useKeyboardControls = () => {
@@ -18,6 +19,7 @@ export const useKeyboardControls = () => {
     shift: false,
     log: false, // Add log state
     e: false,
+    enter: false,
   });
 
   useEffect(() => {
@@ -25,6 +27,7 @@ export const useKeyboardControls = () => {
       const key = e.key.toLowerCase();
       if (key === 'shift') setControls((c) => ({ ...c, shift: true }));
       if (key === 'c') setControls((c) => ({ ...c, log: true }));
+      if (key === 'enter') setControls((c) => ({ ...c, enter: true }));
       const action = keyActionMap[key];
       if (action) setControls((c) => ({ ...c, [action]: true }));
     };
@@ -33,6 +36,7 @@ export const useKeyboardControls = () => {
       const key = e.key.toLowerCase();
       if (key === 'shift') setControls((c) => ({ ...c, shift: false }));
       if (key === 'c') setControls((c) => ({ ...c, log: false }));
+      if (key === 'enter') setControls((c) => ({ ...c, enter: false }));
       const action = keyActionMap[key];
       if (action) setControls((c) => ({ ...c, [action]: false }));
     };
