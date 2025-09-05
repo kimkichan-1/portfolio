@@ -204,12 +204,12 @@ function Model({ characterRef, gameState, setGameState }) {
   useEffect(() => {
     // 발걸음 소리 로드 (여러 경로 시도, .wav 파일 우선)
     const audioPaths = [
-      '/resources/Sounds/Step1.wav',
-      '/resources/Sounds/step1.wav',
-      '/Sounds/Step1.wav',
-      '/resources/Sounds/Step1.mp3',
-      '/resources/Sounds/step1.mp3',
-      '/Sounds/Step1.mp3'
+      '/resources/Sounds/Step2.wav',
+      '/resources/Sounds/step2.wav',
+      '/Sounds/Step2.wav',
+      '/resources/Sounds/Step2.mp3',
+      '/resources/Sounds/step2.mp3',
+      '/Sounds/Step2.mp3'
     ];
     
     // 첫 번째 경로로 시도
@@ -1176,7 +1176,48 @@ function Mailbox(props) {
 }
 
 // GitHub Cat과 RoundedCube를 묶는 그룹 컴포넌트
-function GitHubCatGroup({ position = [0, 0, 0], ...props }) {
+function GitHubCatGroup({ position = [0, 0, 0], characterRef, ...props }) {
+  const [isPlayerNear, setIsPlayerNear] = useState(false);
+  const [showPortal, setShowPortal] = useState(false);
+  const { enter } = useKeyboardControls();
+  const lastEnterState = useRef(false);
+  const portalMaterialRef = useRef();
+  
+  // Enter키 처리
+  useEffect(() => {
+    if (enter && !lastEnterState.current && isPlayerNear) {
+      // GitHub URL을 새 탭에서 열기
+      window.open('https://github.com/kimkichan-1', '_blank');
+    }
+    lastEnterState.current = enter;
+  }, [enter, isPlayerNear]);
+  
+  // 플레이어와의 거리 체크 (흰색 사각형 기준) 및 포탈 애니메이션
+  useFrame((state, delta) => {
+    // 포탈 애니메이션 업데이트
+    if (portalMaterialRef.current) {
+      portalMaterialRef.current.uTime = state.clock.getElapsedTime();
+    }
+    
+    if (characterRef?.current) {
+      // 흰색 사각형의 위치 계산 (정육면체 앞 5 유닛)
+      const groupPosition = new THREE.Vector3(...position);
+      const squarePosition = groupPosition.clone().add(new THREE.Vector3(0, 0, 5));
+      
+      const playerPosition = characterRef.current.position;
+      const distance = squarePosition.distanceTo(playerPosition);
+      
+      const nearDistance = 3; // 가까운 거리
+      const wasNear = isPlayerNear;
+      const nowNear = distance < nearDistance;
+      
+      if (wasNear !== nowNear) {
+        setIsPlayerNear(nowNear);
+        setShowPortal(nowNear);
+      }
+    }
+  });
+  
   return (
     <group position={position} {...props}>
       {/* 둥근 정육면체 (GitHub Cat의 받침대) */}
@@ -1192,6 +1233,22 @@ function GitHubCatGroup({ position = [0, 0, 0], ...props }) {
         <ringGeometry args={[3, 3.5, 4]} />
         <meshStandardMaterial color="white" side={THREE.DoubleSide} />
       </mesh>
+      
+             {/* 포탈 효과 - 플레이어가 가까이 있을 때만 표시 */}
+       {showPortal && (
+         <group position={[0, 0.02, 5]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
+           {/* PortalVortex와 같은 스타일의 포탈 - 흰색과 밝은 회색 */}
+           <mesh scale={[4.9, 4.9, 1]}>
+             <planeGeometry args={[1, 1]} />
+             <vortexMaterial 
+               ref={portalMaterialRef}
+               transparent={true}
+               uColorStart={new THREE.Color('#FFFFFF')}  // 흰색
+               uColorEnd={new THREE.Color('#E0E0E0')}    // 밝은 회색
+             />
+           </mesh>
+         </group>
+       )}
       
       {/* 정육면체 앞면에 "Github" 텍스트 */}
       <Text
@@ -1436,6 +1493,7 @@ function Level1({ characterRef }) {
       {/* GitHub Cat 그룹 (둥근 정육면체 + GitHub Cat) */}
       <GitHubCatGroup 
         position={[-6, 0.2, 20]}
+        characterRef={characterRef}
         castShadow
         receiveShadow
       />
