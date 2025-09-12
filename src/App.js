@@ -1248,7 +1248,7 @@ function Mailbox(props) {
 }
 
 // GitHub Cat과 RoundedCube를 묶는 그룹 컴포넌트
-function GitHubCatGroup({ position = [0, 0, 0], characterRef, ...props }) {
+function GitHubCatGroup({ position = [0, 0, 0], characterRef, level = 1, ...props }) {
   const [isPlayerNear, setIsPlayerNear] = useState(false);
   const [showPortal, setShowPortal] = useState(false);
   const [portalScale, setPortalScale] = useState(0);
@@ -1256,14 +1256,17 @@ function GitHubCatGroup({ position = [0, 0, 0], characterRef, ...props }) {
   const lastEnterState = useRef(false);
   const portalMaterialRef = useRef();
   
-  // Enter키 처리
+  // Enter키 처리 - level에 따라 다른 링크 사용
   useEffect(() => {
     if (enter && !lastEnterState.current && showPortal) {
-      // GitHub URL을 새 탭에서 열기
-      window.open('https://github.com/kimkichan-1', '_blank');
+      // level에 따라 다른 GitHub URL을 새 탭에서 열기
+      const githubUrl = level === 3 
+        ? 'https://github.com/kimkichan-1/kdt-game'  // level3: KDT-Game 프로젝트
+        : 'https://github.com/kimkichan-1';          // level1: 프로필 페이지
+      window.open(githubUrl, '_blank');
     }
     lastEnterState.current = enter;
-  }, [enter, isPlayerNear, showPortal]);
+  }, [enter, isPlayerNear, showPortal, level]);
   
   // 플레이어와의 거리 체크 (흰색 사각형 기준) 및 포탈 애니메이션
   useFrame((state, delta) => {
@@ -1507,6 +1510,203 @@ function MailboxGroup({ position = [0, 0, 0], characterRef, ...props }) {
         castShadow
         receiveShadow
       />
+    </group>
+  );
+}
+
+// 공사장 바리게이트 펜스 컴포넌트
+function ConstructionBarrier({ position = [0, 0, 0], ...props }) {
+  return (
+    <group position={position} scale={1.6} {...props}>
+      {/* 바리게이트 지지대들 */}
+      {[-6, -3, 0, 3, 6].map((x, index) => (
+        <mesh key={`support-${index}`} position={[x, 1.5, 0]} castShadow receiveShadow>
+          <cylinderGeometry args={[0.12, 0.12, 3]} />
+          <meshStandardMaterial color="#FFD700" />
+        </mesh>
+      ))}
+      
+      {/* 상단 가로 막대 */}
+      <mesh position={[0, 3.2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[12.5, 0.15, 0.15]} />
+        <meshStandardMaterial color="#FFD700" />
+      </mesh>
+      
+      {/* 중간 가로 막대 */}
+      <mesh position={[0, 2.2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[12.5, 0.15, 0.15]} />
+        <meshStandardMaterial color="#FFD700" />
+      </mesh>
+      
+      {/* 하단 가로 막대 */}
+      <mesh position={[0, 1.2, 0]} castShadow receiveShadow>
+        <boxGeometry args={[12.5, 0.15, 0.15]} />
+        <meshStandardMaterial color="#FFD700" />
+      </mesh>
+      
+      {/* 경고 텍스트 "개발 중" */}
+      <Text
+        position={[0, 2.7, 0.15]}
+        fontSize={0.6}
+        color="black"
+        anchorX="center"
+        anchorY="middle"
+        rotation={[0, 0, 0]}
+        fontWeight="bold"
+      >
+        개발 중
+      </Text>
+      
+      {/* 경고 텍스트 "UNDER CONSTRUCTION" */}
+      <Text
+        position={[0, 2.4, 0.15]}
+        fontSize={0.3}
+        color="black"
+        anchorX="center"
+        anchorY="middle"
+        rotation={[0, 0, 0]}
+        fontWeight="bold"
+      >
+        UNDER CONSTRUCTION
+      </Text>
+      
+      {/* 경고 텍스트 "KEEP OUT" */}
+      <Text
+        position={[0, 2.1, 0.15]}
+        fontSize={0.3}
+        color="red"
+        anchorX="center"
+        anchorY="middle"
+        rotation={[0, 0, 0]}
+        fontWeight="bold"
+      >
+        KEEP OUT
+      </Text>
+      
+      {/* 경고 아이콘들 (느낌표) */}
+      {[-4.5, -1.5, 1.5, 4.5].map((x, index) => (
+        <Text
+          key={`warning-${index}`}
+          position={[x, 2.7, 0.15]}
+          fontSize={0.45}
+          color="red"
+          anchorX="center"
+          anchorY="middle"
+          rotation={[0, 0, 0]}
+          fontWeight="bold"
+        >
+          !
+        </Text>
+      ))}
+    </group>
+  );
+}
+
+// Game Start 버튼 컴포넌트
+function GameStartButton({ position = [0, 0, 0], characterRef, ...props }) {
+  const [isPlayerNear, setIsPlayerNear] = useState(false);
+  const [showPortal, setShowPortal] = useState(false);
+  const [portalScale, setPortalScale] = useState(0);
+  const { enter } = useKeyboardControls();
+  const lastEnterState = useRef(false);
+  const portalMaterialRef = useRef();
+  
+  // Enter키 처리 - 게임 사이트로 이동
+  useEffect(() => {
+    if (enter && !lastEnterState.current && showPortal) {
+      // 게임 사이트를 새 탭에서 열기
+      window.open('https://kdt-game.onrender.com/', '_blank');
+    }
+    lastEnterState.current = enter;
+  }, [enter, isPlayerNear, showPortal]);
+  
+  // 플레이어와의 거리 체크 및 포탈 애니메이션
+  useFrame((state, delta) => {
+    // 포탈 애니메이션 업데이트
+    if (portalMaterialRef.current) {
+      portalMaterialRef.current.uTime = state.clock.getElapsedTime();
+    }
+    
+    if (characterRef?.current) {
+      // 흰색 사각형의 위치 계산 (버튼 앞 5 유닛)
+      const groupPosition = new THREE.Vector3(...position);
+      const squarePosition = groupPosition.clone().add(new THREE.Vector3(0, 0, 5));
+      
+      const playerPosition = characterRef.current.position;
+      const distance = squarePosition.distanceTo(playerPosition);
+      
+      const maxDistance = 5; // 포탈이 보이기 시작하는 최대 거리
+      const minDistance = 3; // 포탈이 최대 크기가 되는 최소 거리
+      const nearDistance = 3; // Enter키가 작동하는 거리
+      
+      // 거리에 따른 포탈 크기 계산 (0에서 1 사이)
+      const normalizedDistance = Math.max(0, Math.min(1, (distance - minDistance) / (maxDistance - minDistance)));
+      const scale = 1 - normalizedDistance; // 가까울수록 1, 멀수록 0
+      
+      // 포탈 표시 여부 결정
+      const shouldShowPortal = distance < maxDistance;
+      const wasNear = isPlayerNear;
+      const nowNear = distance < nearDistance;
+      
+      if (shouldShowPortal !== showPortal) {
+        setShowPortal(shouldShowPortal);
+      }
+      
+      if (wasNear !== nowNear) {
+        setIsPlayerNear(nowNear);
+      }
+      
+      // 포탈 크기 업데이트 (부드러운 전환)
+      setPortalScale(scale);
+    }
+  });
+  
+  return (
+    <group position={position} {...props}>
+      {/* 게임 시작 버튼 사각형 */}
+      <mesh position={[0, 1.5, 0]} castShadow receiveShadow>
+        <boxGeometry args={[10, 3, 0.8]} />
+        <meshStandardMaterial 
+          color="#4CAF50" 
+          roughness={0.3}
+          metalness={0.1}
+        />
+      </mesh>
+      
+      {/* 버튼 앞면에 "Game Start" 텍스트 */}
+      <Text
+        position={[0, 1.5, 0.41]} // 버튼 앞면에 위치
+        fontSize={1.2}
+        color="white"
+        anchorX="center"
+        anchorY="middle"
+        rotation={[0, 0, 0]}
+      >
+        Game Start
+      </Text>
+      
+      {/* 바닥에 흰색 테두리 사각형 */}
+      <mesh position={[0, 0.01, 5]} rotation={[-Math.PI / 2, 0, Math.PI / 4]} receiveShadow>
+        <ringGeometry args={[5, 5.5, 4]} />
+        <meshStandardMaterial color="white" side={THREE.DoubleSide} />
+      </mesh>
+      
+      {/* 포탈 효과 - 플레이어가 가까이 있을 때만 표시 */}
+      {showPortal && (
+        <group position={[0, 0.02, 5]} rotation={[-Math.PI / 2, 0, Math.PI / 2]}>
+          {/* PortalVortex와 같은 스타일의 포탈 - 거리에 따라 크기 변화 */}
+          <mesh scale={[8.2 * portalScale, 8.2 * portalScale, 1]}>
+            <planeGeometry args={[1, 1]} />
+            <vortexMaterial 
+              ref={portalMaterialRef}
+              transparent={true}
+              opacity={portalScale} // 거리에 따라 투명도도 변화
+              uColorStart={new THREE.Color('#4CAF50')}  // 초록색
+              uColorEnd={new THREE.Color('#81C784')}    // 밝은 초록색
+            />
+          </mesh>
+        </group>
+      )}
     </group>
   );
 }
@@ -1912,6 +2112,22 @@ function Level3({ characterRef }) {
       <GitHubCatGroup 
         position={[15, 0.2, 0]}
         characterRef={characterRef}
+        level={3}
+        castShadow
+        receiveShadow
+      />
+      
+      {/* Game Start 버튼 - 게임 사이트로 이동 */}
+      <GameStartButton 
+        position={[25, 0.2, 0]}
+        characterRef={characterRef}
+        castShadow
+        receiveShadow
+      />
+      
+      {/* 공사장 바리게이트 펜스 - 개발 중 표시 */}
+      <ConstructionBarrier 
+        position={[-35, 0, -10]}
         castShadow
         receiveShadow
       />
