@@ -1869,7 +1869,7 @@ function GameMap2(props) {
 useGLTF.preload('/GameMap.glb');
 useGLTF.preload('/GameMap2.glb');
 
-function Level3() {
+function Level3({ characterRef }) {
   // Map1.png 텍스처 로드
   const map1Texture = useMemo(() => {
     const loader = new THREE.TextureLoader();
@@ -1886,7 +1886,7 @@ function Level3() {
       
       {/* GameMap.glb 모델 렌더링 - 크기와 각도 조절 가능 */}
       <GameMap 
-        position={[50, 0, -50]} 
+        position={[60, 0, -50]} 
         scale={[1, 1, 1]}  // X, Y, Z 각각 크기 조절 가능
         rotation={[0, Math.PI / 2, 0]}  // Y축으로 45도 회전
         castShadow
@@ -1895,7 +1895,7 @@ function Level3() {
       
       {/* GameMap2.glb 모델 렌더링 - 크기와 각도 조절 가능 */}
       <GameMap2 
-        position={[46, -2.2, -130]} 
+        position={[-60, -2.2, -50]} 
         scale={[0.8, 0.8, 0.8]}  // X, Y, Z 각각 크기 조절 가능
         rotation={[0, Math.PI / 2, 0]}  // 회전 없음
         castShadow
@@ -1903,10 +1903,18 @@ function Level3() {
       />
       
       {/* Map1.png 텍스처를 GameMap 밑에 배치 */}
-      <mesh rotation={[-Math.PI / 2, 0, Math.PI / 2]} position={[46, 0.01, -50]} receiveShadow>
+      <mesh rotation={[-Math.PI / 2, 0, Math.PI / 2]} position={[56, 0.01, -50]} receiveShadow>
         <planeGeometry args={[81, 81]} />
         <meshStandardMaterial map={map1Texture} />
       </mesh>
+      
+      {/* Level1의 GitHub Cat 그룹 복사 - Level3에 배치 */}
+      <GitHubCatGroup 
+        position={[15, 0.2, 0]}
+        characterRef={characterRef}
+        castShadow
+        receiveShadow
+      />
       
       {/* Level1로 가는 포탈 - Level3 포탈과 똑같은 색상과 모양 */}
       <PortalBase position={portalLevel3ToLevel1Position} scale={20} castShadow receiveShadow />
@@ -1961,7 +1969,7 @@ function App() {
               characterRef.current.handleSetCarRef(ref);
             }
           }} characterRef={characterRef} /> : 
-           gameState === 'playing_level3' ? <Level3 /> : <Level1 characterRef={characterRef} />}
+           gameState === 'playing_level3' ? <Level3 characterRef={characterRef} /> : <Level1 characterRef={characterRef} />}
         </Suspense>
       </Canvas>
     </div>
