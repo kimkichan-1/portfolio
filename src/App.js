@@ -180,7 +180,6 @@ const portalLevel3ToLevel1Position = new THREE.Vector3(0, 7.5, 23.5);
 const portalLevel3ToLevel1Radius = 2;
 const level2PortalFrontPosition = new THREE.Vector3(-20, 0, -15); // Level2 포탈 앞 위치
 const level3PortalFrontPosition = new THREE.Vector3(20, 0, -15); // Level3 포탈 앞 위치
-const initialCameraPosition = new THREE.Vector3(0, 15, 15);
 
 function CameraController({ gameState, characterRef }) {
   const { camera } = useThree();
@@ -378,7 +377,8 @@ function Model({ characterRef, gameState, setGameState }) {
     if (characterRef.current && safeCarRef.current) {
       characterRef.current.safeCarRef = safeCarRef;
     }
-  }, [characterRef.current, safeCarRef.current]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [safeCarRef.current]);
 
   useEffect(() => {
     if (gameState === 'playing_level2') {
@@ -405,7 +405,8 @@ function Model({ characterRef, gameState, setGameState }) {
       // Model 컴포넌트의 handleSetCarRef 함수를 characterRef에 설정
       characterRef.current.modelHandleSetCarRef = handleSetCarRef;
     }
-  }, [gameState, characterRef]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gameState]);
 
   useEffect(() => {
     let animToPlay = 'Idle';
@@ -883,9 +884,9 @@ function NPCCharacter({ position, playerRef, ...props }) {
   const npcRef = useRef();
   const { scene, animations } = useGLTF('/resources/Ultimate Animated Character Pack - Nov 2019/glTF/Casual_Male.gltf');
   const { actions } = useAnimations(animations, npcRef);
-  
+
   const [isPlayerNear, setIsPlayerNear] = useState(false);
-  const { camera } = useThree();
+  // const { camera } = useThree(); // 미사용
   const initialRotationY = useRef(0); // 초기 Y 회전각 저장
 
   // NPC 모델을 복사해서 독립적으로 작동하도록 함
@@ -1122,9 +1123,10 @@ function RaceFuture({ onCarRef, characterRef, ...props }) {
     cloned.rotation.set(props.rotation[0], props.rotation[1], props.rotation[2]);
     
     // 바퀴 분류 및 위치 설정 완료
-    
+
     return cloned;
-  }, [scene]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [scene, props.position, props.rotation]);
 
   useEffect(() => {
     if (onCarRef && carRef.current && !window.raceFutureInitialized) {
@@ -1141,6 +1143,7 @@ function RaceFuture({ onCarRef, characterRef, ...props }) {
       };
       checkAndCall();
     }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []); // 의존성 배열을 비워서 한 번만 실행
 
   // Model 컴포넌트에 carRef 설정 함수 추가
@@ -1163,7 +1166,8 @@ function RaceFuture({ onCarRef, characterRef, ...props }) {
         }
       };
     }
-  }, [characterRef, clonedScene.wheels]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [clonedScene.frontWheels, clonedScene.rearWheels]);
 
   // 실시간으로 월드 위치 업데이트
   useFrame(() => {
