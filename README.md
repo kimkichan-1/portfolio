@@ -106,6 +106,39 @@ npm start
 npm run build
 ```
 
+## 🌐 Netlify 배포
+
+### 방법 1: Netlify CLI 사용
+```bash
+# Netlify CLI 설치
+npm install -g netlify-cli
+
+# 빌드
+npm run build
+
+# Netlify에 배포
+netlify deploy --prod
+```
+
+### 방법 2: Git 연동 (권장)
+1. GitHub/GitLab에 코드를 푸시
+2. [Netlify](https://www.netlify.com/)에 로그인
+3. "New site from Git" 클릭
+4. 저장소 선택
+5. 빌드 설정 자동 감지 (netlify.toml 사용)
+6. "Deploy site" 클릭
+
+### 방법 3: 드래그 앤 드롭
+```bash
+npm run build
+```
+빌드 후 생성된 `build` 폴더를 [Netlify Drop](https://app.netlify.com/drop)에 드래그 앤 드롭
+
+### 배포 설정
+- **빌드 명령어**: `npm run build`
+- **배포 디렉토리**: `build`
+- **Node 버전**: 18
+
 ## 📁 프로젝트 구조
 
 ```
