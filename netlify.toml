@@ -15,6 +15,7 @@
 [build.environment]
   NODE_VERSION = "18"
   NPM_FLAGS = "--legacy-peer-deps"
+  CI = "false"
 
 # 대용량 파일 처리를 위한 설정 (3D 모델, 오디오 파일 등)
 [[headers]]
